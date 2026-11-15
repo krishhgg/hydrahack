@@ -1,0 +1,38 @@
+name: HydraDB image
+
+# Publishes the thin HydraDB wrapper image (pinned upstream engine digest + entrypoint,
+# data volume and round-trip healthcheck). The Rust engine is never rebuilt here.
+on:
+  push:
+    branches: [main]
+    paths:
+      - infra/hydradb/**
+      - .github/workflows/hydradb-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/hydradb/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/hydrahack-hydradb:latest
+            ghcr.io/${{ github.repository_owner }}/hydrahack-hydradb:${{ github.sha }}

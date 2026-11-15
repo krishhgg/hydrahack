@@ -1,0 +1,18 @@
+services:
+  hydradb:
+    build:
+      context: .
+      dockerfile: infra/hydradb/Dockerfile
+    image: ghcr.io/krishhgg/hydrahack-hydradb:latest
+    environment:
+      HYDRADB_TOKEN: ${HYDRADB_TOKEN:-local-development-token-32-bytes}
+    ports:
+      - "127.0.0.1:7687:7687"
+      - "127.0.0.1:8443:8443"
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - hydradb-data:/data
+    restart: unless-stopped
+
+volumes:
+  hydradb-data:
