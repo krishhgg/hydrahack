@@ -28,17 +28,21 @@ setup() {
     railway add --service hydradb --image "$HYDRADB_IMAGE" \
       --variables "HYDRADB_TOKEN=$token" \
       --variables "RAILWAY_RUN_UID=0" \
-      --json >/dev/null
-    railway volume add --service hydradb --mount-path /data --json >/dev/null
+      --json >/dev/null 2>&1
+    # volume add acts on the linked service, so link hydradb first
+    railway link --project "$PROJECT" --service hydradb --environment production >/dev/null
+    railway volume add --mount-path /data --json >/dev/null
   fi
 
   if ! railway variable list --service app --json >/dev/null 2>&1; then
-    railway add --service app --json >/dev/null
+    railway add --service app --json >/dev/null 2>&1
   fi
+  railway link --project "$PROJECT" --service app --environment production >/dev/null
   railway variable set --service app --skip-deploys \
     'HYDRADB_URL=http://${{hydradb.RAILWAY_PRIVATE_DOMAIN}}:8443' \
     'HYDRADB_ADMIN_URL=http://${{hydradb.RAILWAY_PRIVATE_DOMAIN}}:9090' \
-    'HYDRADB_TOKEN=${{hydradb.HYDRADB_TOKEN}}' >/dev/null
+    'HYDRADB_TOKEN=${{hydradb.HYDRADB_TOKEN}}' \
+    "APP_MODULE=${APP_MODULE:-hydrahack.api:app}" >/dev/null
   if [ -n "${OPENAI_API_KEY:-}" ]; then
     printf '%s' "$OPENAI_API_KEY" | railway variable set OPENAI_API_KEY --stdin --service app --skip-deploys >/dev/null
   fi
