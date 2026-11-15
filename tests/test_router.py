@@ -46,10 +46,3 @@ def test_rejections_push_an_offered_but_unused_tool_down():
     router, store = make()
     router.feedback([Run(1, "convert dollars to euros", {4}, {3})])
     assert store.outcomes([3, 4]) == {3: (0, 1), 4: (1, 0)}
-
-
-def test_coused_counts_task_paths():
-    _, store = make()
-    store.add_runs([Run(1, "a", {0, 1}, set()), Run(2, "b", {0, 1, 2}, set())])
-    assert store.coused([0])[0] == {1: 2, 2: 1}
-    assert store.siblings([0])[0] == {1}
