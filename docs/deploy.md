@@ -6,7 +6,7 @@ One Fly app, one machine, two processes in one container: HydraDB (the engine, o
 
 | Piece | Where |
 |---|---|
-| Image | `infra/fly/Dockerfile`, built on `ghcr.io/krishhgg/hydrahack-hydradb:latest` (pinned upstream engine v0.4.0, see `infra/hydradb/Dockerfile`) plus python and the app, installed with `uv sync --locked --no-dev` |
+| Image | `infra/fly/Dockerfile`, built on `ghcr.io/krishhgg/hydrahack-hydradb` pinned by digest (the wrapper built from #3, 31ecb99) (pinned upstream engine v0.4.0, see `infra/hydradb/Dockerfile`) plus python and the app, installed with `uv sync --locked --no-dev` |
 | Config | `fly.toml`: region `sjc`, `shared-cpu-2x` with 2 GB, volume `hydradb_data` at `/data`, `/health` check every 15 s, `auto_stop_machines = "off"` and `min_machines_running = 1` so it stays warm |
 | Secrets | `HYDRADB_TOKEN` (random, generated once by `deploy.sh`), `OPENAI_API_KEY` (from the deployer's environment, if set). Never committed or printed |
 | App module | `APP_MODULE` defaults to `hydrahack.api:app`. While that module does not exist the entrypoint serves `infra/app_stub.py` (`/health` only), so the deploy still goes green |

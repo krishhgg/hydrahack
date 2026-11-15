@@ -3,7 +3,7 @@
 #   docker build -f infra/fly/Dockerfile -t hydrahack-fly .
 # The base is the published wrapper image (pinned upstream engine plus env defaults), see
 # infra/hydradb/Dockerfile and .github/workflows/hydradb-image.yml.
-ARG HYDRADB_BASE=ghcr.io/krishhgg/hydrahack-hydradb:latest
+ARG HYDRADB_BASE=ghcr.io/krishhgg/hydrahack-hydradb@sha256:081ac63cfda4d8e1d8e52ee6769c22ef9c734cb8bceb3e0d28ae70a23886fe24
 FROM ${HYDRADB_BASE}
 
 USER root
