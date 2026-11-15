@@ -55,7 +55,7 @@ Anchors from the market: Composio Standard is $18 per seat per month, Zep Flex i
 
 Most of the gain over BM25 comes from the learning loop: logging which tools finished runs needed and routing on that. A budget-matched plain store gets almost all of it (69.9% against 70.3%, level on tool sets seen in training at 78.5% against 78.2%). We say so because the eval shows it.
 
-What the graph structure adds is concentrated where a new customer lives. On tool sets never seen in training, Waypoint scores 41.5% against 38.4% for the plain store, and the curve is ahead early (52.5% against 49.6% after 4,000 runs). A `Clause -NEEDS-> Api` edge carries only the tools one sub-request needed, so Waypoint can assemble a new tool set from parts of different past runs, where a whole stored run drags in tools the new task does not need. The gain is real but modest.
+What the graph structure adds is concentrated where a new customer lives. On tool sets never seen in training, Waypoint scores 41.5% against 38.4% for the plain store, and it learns new combinations faster: it reaches 30% on those tasks after about 4,600 runs where the plain store needs about 8,800 (roughly 28% to 48% fewer runs across the levels measured; 10% to 38% fewer over all tasks; interpolated between checkpoints, so approximate). A new customer's catalog starts with few runs, so this is the number that matters for adoption. A `Clause -NEEDS-> Api` edge carries only the tools one sub-request needed, so Waypoint can assemble a new tool set from parts of different past runs, where a whole stored run drags in tools the new task does not need. The gain is real but modest.
 
 ## Why it needs HydraDB
 
