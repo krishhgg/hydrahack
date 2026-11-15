@@ -3,28 +3,28 @@
 from __future__ import annotations
 
 import re
+import threading
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from hydrahack.data import Api
-from hydrahack.store import Run
+from hydrahack.store import Clause, Run
 from hydrahack.text import BM25
+
+MAX_PARTS = 10
 
 
 @dataclass
 class Params:
     lex_top: int = 30
     task_top: int = 8
-    seeds: int = 6
+    clause_top: int = 6
     w_lex: float = 1.0
     w_exp: float = 4.0
-    w_co: float = 0.0
-    w_sib: float = 0.0
+    w_needs: float = 1.0
     w_rej: float = 0.3
     sim_power: float = 1.0
-    w_clause: float = 1.0
-    clause_top: int = 3
 
 
 _CLAUSE = re.compile(
@@ -33,10 +33,10 @@ _CLAUSE = re.compile(
 
 
 def clauses(text: str) -> list[str]:
-    """Split a multi-part task into its sub-requests; each one becomes its own entry point into the
-    experience graph, so a task combining needs no single past run had can still be covered."""
+    """Split a multi-part task into its sub-requests ("...? Also, ..."). A single-part task returns
+    itself, so every task has at least one clause."""
     parts = [p.strip() for p in _CLAUSE.split(text) if p and len(p.strip()) > 15]
-    return parts if len(parts) > 1 else []
+    return parts[:MAX_PARTS] if len(parts) > 1 else [text.strip()]
 
 
 @dataclass
@@ -44,6 +44,7 @@ class Route:
     tools: list[int]
     scores: dict[int, float]
     tasks: list[tuple[int, float]] = field(default_factory=list)
+    clauses: list[dict] = field(default_factory=list)
     paths: dict[int, list[dict]] = field(default_factory=dict)
 
 
@@ -57,69 +58,97 @@ class Router:
         for a in apis:
             self.api_index.add(a.idx, f"{a.category} {a.tool} {a.name} {a.description}")
         self.task_index = BM25()
+        self.clause_index = BM25()
+        self.index_lock = threading.Lock()
 
     def remember(self, task_id: int, text: str) -> None:
-        self.task_index.add(task_id, text)
+        with self.index_lock:
+            self.task_index.add(task_id, text)
+
+    def remember_clause(self, clause_id: int, text: str) -> None:
+        with self.index_lock:
+            self.clause_index.add(clause_id, text)
+
+    def _search(self, index: BM25, text: str, top: int):
+        with self.index_lock:
+            return index.search_scaled(text, top)
+
+    def split(self, run: Run) -> list[Clause]:
+        """Learn which sub-request each needed tool served: assign every used tool to the clause
+        whose text matches the tool best. These become (Clause)-[:NEEDS]->(Api) edges."""
+        parts = clauses(run.text)
+        if len(parts) == 1:
+            return [Clause(run.task_id * MAX_PARTS, run.task_id, parts[0], set(run.used))]
+        needs: list[set[int]] = [set() for _ in parts]
+        part_scores = []
+        for part in parts:
+            hits, ceiling = self.api_index.search_scaled(part, self.p.lex_top)
+            part_scores.append({a: s / ceiling for a, s in hits})
+        for a in run.used:
+            best = max(range(len(parts)), key=lambda i: part_scores[i].get(a, 0.0))
+            needs[best].add(a)
+        return [
+            Clause(run.task_id * MAX_PARTS + i, run.task_id, part, needs[i])
+            for i, part in enumerate(parts)
+            if needs[i]
+        ]
 
     def route(self, text: str, k: int = 5) -> Route:
         p = self.p
-        score: Counter[float] = Counter()
+        score: Counter[int] = Counter()
         paths: dict[int, list[dict]] = {}
         lex = self.api_index.search(text, p.lex_top)
         top_lex = lex[0][1] if lex else 1.0
         for a, s in lex:
             score[a] += p.w_lex * s / top_lex
             paths.setdefault(a, []).append({"via": "text", "w": round(s / top_lex, 3)})
-        tasks: list[tuple[int, float]] = []
-        if self.learn and len(self.task_index):
-            hits, ceiling = self.task_index.search_scaled(text, p.task_top)
-            tasks = [(t, (s / ceiling) ** p.sim_power) for t, s in hits]
-            entries = [(t, sim, p.w_exp, "task", None) for t, sim in tasks]
-            if p.w_clause:
-                for i, part in enumerate(clauses(text)):
-                    c_hits, c_ceiling = self.task_index.search_scaled(part, p.clause_top)
-                    for t, s in c_hits:
-                        entries.append((t, s / c_ceiling, p.w_clause, "clause", i))
-                        if all(t != u for u, _ in tasks):
-                            tasks.append((t, s / c_ceiling))
-            used = self.store.task_tools({t for t, *_ in entries})
-            for t, sim, weight, via, clause in entries:
-                for a in used.get(t, ()):
-                    score[a] += weight * sim
-                    step = {"via": via, "task": t, "w": round(sim, 3)}
-                    if clause is not None:
-                        step["clause"] = clause
-                    paths.setdefault(a, []).append(step)
-        if not self.learn:
-            return self._finish(score, k, tasks, paths)
-        seeds = [a for a, _ in score.most_common(p.seeds)]
-        base = dict(score)
-        co = self.store.coused(seeds) if p.w_co else {}
-        sib = self.store.siblings(seeds) if p.w_sib else {}
-        for s in seeds:
-            c = co.get(s)
-            if c:
-                total = sum(c.values())
-                for b, n in c.items():
-                    w = base[s] * n / total
-                    score[b] += p.w_co * w
-                    paths.setdefault(b, []).append(
-                        {"via": "co_used", "from": s, "w": round(n / total, 3)}
+        if not self.learn or not len(self.task_index):
+            return self._finish(score, k, [], [], paths)
+
+        hits, ceiling = self._search(self.task_index, text, p.task_top)
+        tasks = [(t, (s / ceiling) ** p.sim_power) for t, s in hits]
+        used = self.store.task_tools([t for t, _ in tasks])
+        for t, sim in tasks:
+            for a in used.get(t, ()):
+                score[a] += p.w_exp * sim
+                paths.setdefault(a, []).append({"via": "task", "task": t, "w": round(sim, 3)})
+
+        matched: list[dict] = []
+        if p.w_needs and len(self.clause_index):
+            for i, part in enumerate(clauses(text)):
+                c_hits, c_ceiling = self._search(self.clause_index, part, p.clause_top)
+                matched += [{"clause": c, "part": i, "w": s / c_ceiling} for c, s in c_hits]
+            needs = self.store.clause_needs([m["clause"] for m in matched])
+            for m in matched:
+                for a in needs.get(m["clause"], ()):
+                    score[a] += p.w_needs * m["w"]
+                    paths.setdefault(a, []).append(
+                        {
+                            "via": "clause",
+                            "clause": m["clause"],
+                            "part": m["part"],
+                            "w": round(m["w"], 3),
+                        }
                     )
-            for b in sib.get(s, ()):
-                score[b] += p.w_sib * base[s]
+
         if p.w_rej:
             cand = [a for a, _ in score.most_common(k * 3)]
             for a, (u, r) in self.store.outcomes(cand).items():
                 if r:
                     score[a] *= 1 - p.w_rej * r / (u + r + 1)
-        return self._finish(score, k, tasks, paths)
+        return self._finish(score, k, tasks, matched, paths)
 
-    def _finish(self, score, k, tasks, paths) -> Route:
+    def _finish(self, score, k, tasks, matched, paths) -> Route:
         top = [a for a, _ in score.most_common(k)]
-        return Route(top, {a: score[a] for a in top}, tasks, {a: paths.get(a, []) for a in top})
+        return Route(
+            top, {a: score[a] for a in top}, tasks, matched, {a: paths.get(a, []) for a in top}
+        )
 
     def feedback(self, runs: Sequence[Run]) -> None:
+        parts = [c for r in runs for c in self.split(r)]
         self.store.add_runs(runs)
+        self.store.add_clauses(parts)
         for r in runs:
             self.remember(r.task_id, r.text)
+        for c in parts:
+            self.remember_clause(c.clause_id, c.text)

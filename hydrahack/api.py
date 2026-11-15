@@ -68,7 +68,6 @@ class State:
         self.ready = False
         self.error: str | None = None
         self.lock = threading.Lock()
-        self.ids = itertools.count(LIVE_TASK_BASE + int(time.time()) % 1_000_000)
 
     def start(self) -> None:
         try:
@@ -84,22 +83,35 @@ class State:
             self.tokens = {a.idx: len(enc.encode(a.text)) for a in self.ds.apis}
             self.catalog_tokens = sum(self.tokens.values())
             self.graph.load_catalog(self.ds.apis)
+            seed = [
+                Run(int(q), self.ds.queries[q], self.ds.train[q], set())
+                for q in self.ds.stream_order
+            ]
             past = self.graph.runs()
             if not past:
-                runs = [
-                    Run(int(q), self.ds.queries[q], self.ds.train[q], set())
-                    for q in self.ds.stream_order
-                ]
-                self.graph.add_runs(runs)
-                past = [(r.task_id, r.text) for r in runs]
+                self.graph.add_runs(seed)
+                past = [(r.task_id, r.text) for r in seed]
             for task_id, text in past:
                 self.router.remember(task_id, text)
+            parts = self.graph.clause_texts()
+            if not parts:
+                split = [c for r in seed for c in self.router.split(r)]
+                self.graph.add_clauses(split)
+                parts = [(c.clause_id, c.text) for c in split]
+            for clause_id, text in parts:
+                self.router.remember_clause(clause_id, text)
+            self.ids = itertools.count(max([LIVE_TASK_BASE, *(t + 1 for t, _ in past)]))
+            self.held_out = {_norm(self.ds.queries[q]) for q in self.ds.test}
             self.texts = dict(past)
             self.ready = True
             log.info("waypoint ready: %d apis, %d learned tasks", len(self.apis), len(past))
         except Exception as exc:  # surfaced on /health
             self.error = f"{type(exc).__name__}: {exc}"
             log.exception("startup failed")
+
+
+def _norm(text: str) -> str:
+    return " ".join(text.lower().split())
 
 
 state = State()
@@ -200,6 +212,8 @@ def route(body: RouteIn) -> dict:
 
 def _learn(task: str, used_ids: list[int], offered: list[int]) -> dict:
     s = _ready()
+    if _norm(task) in s.held_out:
+        raise HTTPException(409, "held-out test task: teaching it would leak eval labels")
     used = {a for a in used_ids if a in s.apis}
     if not used:
         raise HTTPException(422, "used must name at least one known api idx")

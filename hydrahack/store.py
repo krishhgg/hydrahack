@@ -1,12 +1,12 @@
 """Where Waypoint's catalog and experience live.
 
 `GraphStore` is the real store: HydraDB, with the catalog as (:Category)-[:HAS_TOOL]->(:Tool)
--[:HAS_API]->(:Api) and experience as (:Task)-[:USED]->(:Api) and (:Task)-[:REJECTED]->(:Api).
-Co-usage is never stored as a counter: it is the number of Task paths Api<-USED-Task-USED->Api,
-counted by a 2-hop traversal at query time, so it grows the moment a run is written back.
+-[:HAS_API]->(:Api) and experience as (:Task)-[:USED]->(:Api), (:Task)-[:REJECTED]->(:Api) and
+(:Task)-[:HAS_CLAUSE]->(:Clause)-[:NEEDS]->(:Api), where a Clause is one sub-request of a task and
+NEEDS records which of the task's tools served it.
 
-`MemoryStore` answers the same four questions from Python dicts. It exists for unit tests and for
-the "flat store" comparison in eval/, never for the live app.
+`MemoryStore` answers the same questions from Python dicts. It exists for unit tests and the
+in-memory parity check, never for the live app.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ API_BASE = 1_000_000
 TOOL_BASE = 2_000_000
 CAT_BASE = 3_000_000
 TASK_BASE = 10_000_000
+CLAUSE_BASE = 100_000_000
 
 
 def api_node(idx: int) -> int:
@@ -43,6 +44,20 @@ class Run:
     rejected: set[int]
 
 
+@dataclass
+class Clause:
+    """One sub-request of a run and the tools it needed."""
+
+    clause_id: int
+    task_id: int
+    text: str
+    needs: set[int]
+
+
+def clause_node(clause_id: int) -> int:
+    return CLAUSE_BASE + clause_id
+
+
 class MemoryStore:
     def __init__(self) -> None:
         self.tool_of: dict[int, str] = {}
@@ -50,6 +65,8 @@ class MemoryStore:
         self.task_used: dict[int, set[int]] = {}
         self.api_tasks: dict[int, set[int]] = defaultdict(set)
         self.rejected: Counter[int] = Counter()
+        self.needs: dict[int, set[int]] = {}
+        self.clause_task: dict[int, int] = {}
 
     def load_catalog(self, apis: Sequence[Api]) -> None:
         for a in apis:
@@ -67,24 +84,21 @@ class MemoryStore:
     def task_tools(self, task_ids: Iterable[int]) -> dict[int, set[int]]:
         return {t: self.task_used[t] for t in task_ids if t in self.task_used}
 
-    def coused(self, api_ids: Iterable[int]) -> dict[int, Counter[int]]:
-        out: dict[int, Counter[int]] = {}
-        for s in api_ids:
-            c: Counter[int] = Counter()
-            for t in self.api_tasks.get(s, ()):
-                for b in self.task_used[t]:
-                    if b != s:
-                        c[b] += 1
-            out[s] = c
-        return out
+    def add_clauses(self, parts: Sequence[Clause]) -> None:
+        for c in parts:
+            self.needs[c.clause_id] = set(c.needs)
+            self.clause_task[c.clause_id] = c.task_id
 
-    def siblings(self, api_ids: Iterable[int]) -> dict[int, set[int]]:
-        return {s: self.by_tool[self.tool_of[s]] - {s} for s in api_ids if s in self.tool_of}
+    def clause_needs(self, clause_ids: Iterable[int]) -> dict[int, set[int]]:
+        return {c: self.needs[c] for c in clause_ids if c in self.needs}
 
     def outcomes(self, api_ids: Iterable[int]) -> dict[int, tuple[int, int]]:
         return {a: (len(self.api_tasks.get(a, ())), self.rejected[a]) for a in api_ids}
 
     def runs(self) -> list[tuple[int, str]]:
+        return []
+
+    def clause_texts(self) -> list[tuple[int, str]]:
         return []
 
 
@@ -97,12 +111,12 @@ class GraphStore:
 
     def reset(self) -> None:
         """Forget all experience: Task nodes, their edges and the Api outcome counters."""
-        self.db.reset(labels=["Task"])
+        self.db.reset(labels=["Task", "Clause"])
         rows = self.db.query("MATCH (a:Api) RETURN a.id AS id")
         self.db.write_nodes([{"id": r["id"], "used": 0, "rejected": 0} for r in rows], "Api")
 
     def reset_all(self) -> None:
-        self.db.reset(labels=["Task", "Api", "Tool", "Category"])
+        self.db.reset(labels=["Task", "Clause", "Api", "Tool", "Category"])
 
     def load_catalog(self, apis: Sequence[Api]) -> None:
         cats = sorted({a.category for a in apis})
@@ -185,34 +199,30 @@ class GraphStore:
             out[r["t"] - TASK_BASE].add(r["a"])
         return out
 
-    def coused(self, api_ids: Iterable[int]) -> dict[int, Counter[int]]:
-        ids = [api_node(a) for a in api_ids]
-        out: dict[int, Counter[int]] = defaultdict(Counter)
-        if not ids:
-            return out
-        rows = self.db.query(
-            "MATCH (s:Api)<-[:USED]-(t:Task)-[:USED]->(b:Api) WHERE s.id IN $ids "
-            "RETURN s.idx AS s, b.idx AS b, count(*) AS n",
-            {"ids": ids},
+    def add_clauses(self, parts: Sequence[Clause]) -> None:
+        self.db.write_nodes(
+            [{"id": clause_node(c.clause_id), "text": c.text[:1000]} for c in parts], "Clause"
         )
-        for r in rows:
-            if r["s"] != r["b"]:
-                out[r["s"]][r["b"]] += r["n"]
-        return out
+        self.db.write_edges(
+            [{"src": task_node(c.task_id), "dst": clause_node(c.clause_id)} for c in parts],
+            "HAS_CLAUSE",
+        )
+        self.db.write_edges(
+            [{"src": clause_node(c.clause_id), "dst": api_node(a)} for c in parts for a in c.needs],
+            "NEEDS",
+        )
 
-    def siblings(self, api_ids: Iterable[int]) -> dict[int, set[int]]:
-        ids = [api_node(a) for a in api_ids]
+    def clause_needs(self, clause_ids: Iterable[int]) -> dict[int, set[int]]:
+        ids = [clause_node(c) for c in clause_ids]
         out: dict[int, set[int]] = defaultdict(set)
         if not ids:
             return out
         rows = self.db.query(
-            "MATCH (s:Api)<-[:HAS_API]-(x:Tool)-[:HAS_API]->(b:Api) WHERE s.id IN $ids "
-            "RETURN s.idx AS s, b.idx AS b",
+            "MATCH (c:Clause)-[:NEEDS]->(a:Api) WHERE c.id IN $ids RETURN c.id AS c, a.idx AS a",
             {"ids": ids},
         )
         for r in rows:
-            if r["s"] != r["b"]:
-                out[r["s"]].add(r["b"])
+            out[r["c"] - CLAUSE_BASE].add(r["a"])
         return out
 
     def outcomes(self, api_ids: Iterable[int]) -> dict[int, tuple[int, int]]:
@@ -227,6 +237,10 @@ class GraphStore:
         for r in rows:
             out[r["a"]] = (r["u"] or 0, r["r"] or 0)
         return out
+
+    def clause_texts(self) -> list[tuple[int, str]]:
+        rows = self.db.query("MATCH (c:Clause) RETURN c.id AS id, c.text AS text")
+        return [(r["id"] - CLAUSE_BASE, r["text"] or "") for r in rows]
 
     def runs(self) -> list[tuple[int, str]]:
         rows = self.db.query("MATCH (t:Task) RETURN t.id AS id, t.text AS text")

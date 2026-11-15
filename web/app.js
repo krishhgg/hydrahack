@@ -445,8 +445,11 @@
   function updateTeach() {
     const btn = $("#teach-btn");
     const n = state.checked.size;
-    btn.disabled = state.busy || !state.route || !n;
-    btn.textContent = "Teach Waypoint: these were the tools I needed" + (n ? " (" + n + ")" : "");
+    const heldOut = !!(state.routedExample && state.routedTask === String(state.routedExample.text).trim());
+    btn.disabled = state.busy || !state.route || !n || heldOut;
+    btn.textContent = heldOut
+      ? "Held-out test task: edit the text to teach (keeps the eval clean)"
+      : "Teach Waypoint: these were the tools I needed" + (n ? " (" + n + ")" : "");
   }
 
   async function teach() {
