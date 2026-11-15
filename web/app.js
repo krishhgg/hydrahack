@@ -146,6 +146,7 @@
     const wp = frac(hd.waypoint ?? last.waypoint);
     const bm = frac(hd.baseline ?? last.bm25);
     const fm = frac(hd.flat_memory ?? last.flat_memory);
+    const kn = frac(hd.flat_knn ?? last.flat_knn);
 
     $("#dataset").textContent = [r.dataset, isNum(r.test_tasks) && fmt(r.test_tasks) + " held-out tasks"].filter(Boolean).join(" · ");
 
@@ -161,13 +162,10 @@
     const sub = el("div", { class: "hero-sub", text: metric + " = share of " + (isNum(r.test_tasks) ? fmt(r.test_tasks) + " " : "") + "held-out tasks where every tool the task needed is among the " + k + " loaded into context." });
     const kpis = [];
     if (fm != null) kpis.push(el("div", { class: "kpi" }, el("div", { class: "k", text: "Flat memory" }), el("div", { class: "v" }, el("span", { class: "fm", text: pct(fm) }))));
+    if (kn != null) kpis.push(el("div", { class: "kpi", title: "Plain store with Waypoint's weights and candidate budget, voting over whole past runs" }, el("div", { class: "k", text: "Flat k-NN" }), el("div", { class: "v" }, el("span", { class: "kn", text: pct(kn) }))));
     if (isNum(hd.recall5_baseline) || isNum(hd.recall5_waypoint)) {
       kpis.push(el("div", { class: "kpi" }, el("div", { class: "k", text: "Recall@" + k }),
         el("div", { class: "v" }, el("span", { class: "from", text: pct(hd.recall5_baseline) }), " → ", el("span", { class: "to", text: pct(hd.recall5_waypoint) }))));
-    }
-    if (isNum(hd.tokens_per_task_waypoint)) {
-      kpis.push(el("div", { class: "kpi", title: "Tool-schema tokens loaded per task vs loading the whole catalog" }, el("div", { class: "k", text: "Tokens / task" }),
-        el("div", { class: "v" }, el("span", { class: "to", text: short(hd.tokens_per_task_waypoint) }), isNum(hd.tokens_catalog) && el("small", { text: " of " + short(hd.tokens_catalog) }))));
     }
     hero.after(sub);
     document.querySelectorAll("#p-results .hero-sub").forEach((n) => n !== sub && n.remove());
@@ -187,7 +185,7 @@
         el("span", { class: "bv", text: pct(v) }));
       return el("div", { class: "slice", title: sliceHint[key] || "" },
         el("div", { class: "sh" }, el("b", { text: name }), isNum(s.n) && el("span", { text: "n = " + fmt(s.n) })),
-        bar("wp", "Waypoint", s.waypoint), bar("fm", "Flat memory", s.flat_memory), bar("bm", "BM25", s.bm25));
+        bar("wp", "Waypoint", s.waypoint), bar("kn", "Flat k-NN", s.flat_knn), bar("fm", "Flat memory", s.flat_memory), bar("bm", "BM25", s.bm25));
     }));
     $("#slices").hidden = !slices.length;
 
@@ -231,6 +229,7 @@
     const series = [
       { key: "bm25", cls: "bm" },
       { key: "flat_memory", cls: "fm" },
+      { key: "flat_knn", cls: "kn" },
       { key: "waypoint", cls: "wp" },
     ];
     const ends = [];
@@ -267,7 +266,7 @@
       cursor.setAttribute("visibility", "visible");
       const row = (label, v) => isNum(v) ? el("div", { class: "ts", text: label + "  " + pct(v) }) : null;
       showTip(ev, el("div", { class: "th", text: fmt(best.runs) + " feedback runs" }),
-        row("Waypoint   ", best.waypoint), row("Flat memory", best.flat_memory), row("BM25       ", best.bm25));
+        row("Waypoint   ", best.waypoint), row("Flat k-NN  ", best.flat_knn), row("Flat memory", best.flat_memory), row("BM25       ", best.bm25));
     });
     hit.addEventListener("mouseleave", () => { cursor.setAttribute("visibility", "hidden"); hideTip(); });
     root.append(hit);

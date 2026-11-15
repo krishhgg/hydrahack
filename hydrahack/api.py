@@ -381,6 +381,7 @@ def results() -> dict:
             "waypoint": p["waypoint"]["completeness"],
             "bm25": p["bm25"]["completeness"],
             "flat_memory": p["flat_memory"]["completeness"],
+            "flat_knn": p["flat_knn"]["completeness"],
         }
         for p in raw["curve"]
     ]
