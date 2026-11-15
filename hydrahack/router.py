@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -42,9 +43,15 @@ class Router:
         for a in apis:
             self.api_index.add(a.idx, f"{a.category} {a.tool} {a.name} {a.description}")
         self.task_index = BM25()
+        self.index_lock = threading.Lock()
 
     def remember(self, task_id: int, text: str) -> None:
-        self.task_index.add(task_id, text)
+        with self.index_lock:
+            self.task_index.add(task_id, text)
+
+    def _search_tasks(self, text: str, top: int):
+        with self.index_lock:
+            return self.task_index.search_scaled(text, top)
 
     def route(self, text: str, k: int = 5) -> Route:
         p = self.p
@@ -57,7 +64,7 @@ class Router:
             paths.setdefault(a, []).append({"via": "text", "w": round(s / top_lex, 3)})
         tasks: list[tuple[int, float]] = []
         if self.learn and len(self.task_index):
-            hits, ceiling = self.task_index.search_scaled(text, p.task_top)
+            hits, ceiling = self._search_tasks(text, p.task_top)
             if hits:
                 tasks = [(t, (s / ceiling) ** p.sim_power) for t, s in hits]
                 used = self.store.task_tools([t for t, _ in tasks])
