@@ -14,6 +14,7 @@ W, H, L, R, T, B = 760, 420, 70, 150, 50, 60
 SERIES = [
     ("waypoint", "Waypoint (learns in HydraDB)", "#22c55e", ""),
     ("flat_memory", "Flat memory (copy nearest run)", "#60a5fa", "6 4"),
+    ("flat_knn", "Flat k-NN (same budget)", "#f59e0b", "3 3"),
     ("bm25", "Stateless BM25 tool search", "#9ca3af", "2 4"),
 ]
 

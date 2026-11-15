@@ -364,19 +364,63 @@
       : "";
     renderList("#wp-list", "#wp-score", r.tools, true);
     renderList("#bm-list", "#bm-score", r.baseline, false);
+    renderParts();
     renderGraph();
     renderTokens();
     updateTeach();
   }
 
-  function viaText(paths) {
-    if (!Array.isArray(paths) || !paths.length) return "";
-    const tasks = new Set(paths.filter((p) => p && p.via === "task").map((p) => p.task)).size;
-    const text = paths.some((p) => p && p.via === "text");
-    const parts = [];
-    if (tasks) parts.push(tasks + " past task" + (tasks === 1 ? "" : "s"));
-    if (text) parts.push("text");
-    return parts.length ? "via " + parts.join(" + ") : "";
+  function renderParts() {
+    const host = $("#parts");
+    const parts = state.route && Array.isArray(state.route.parts) ? state.route.parts.filter((p) => typeof p === "string" && p.trim()) : [];
+    host.hidden = parts.length < 2;
+    host.replaceChildren(...(parts.length < 2 ? [] : [
+      el("span", { class: "parts-l", text: "split into" }),
+      ...parts.map((p, i) => {
+        const pill = el("span", { class: "part", title: p, "data-part": i }, el("b", { text: String(i + 1) }), p);
+        pill.addEventListener("mouseenter", () => focusGraph({ part: i }));
+        pill.addEventListener("mouseleave", () => focusGraph(null));
+        return pill;
+      }),
+    ]));
+  }
+
+  const VOTE_KINDS = ["task", "clause", "text"];
+
+  function voteOf(t) {
+    const v = t.vote && typeof t.vote === "object" ? t.vote : null;
+    const out = { text: 0, task: 0, clause: 0, rf: v && isNum(v.rejected_factor) ? v.rejected_factor : 1 };
+    if (v && VOTE_KINDS.some((k) => isNum(v[k]))) {
+      for (const k of VOTE_KINDS) out[k] = isNum(v[k]) ? Math.max(0, v[k]) : 0;
+      return out;
+    }
+    for (const p of Array.isArray(t.paths) ? t.paths : []) {
+      if (!p || !VOTE_KINDS.includes(p.via)) continue;
+      const c = isNum(p.c) ? p.c : isNum(p.w) ? p.w : 0;
+      out[p.via] += Math.max(0, c);
+    }
+    return out;
+  }
+
+  function voteLabel(t) {
+    const paths = Array.isArray(t.paths) ? t.paths.filter(Boolean) : [];
+    const tasks = new Set(paths.filter((p) => p.via === "task").map((p) => p.task)).size;
+    const clauses = new Set(paths.filter((p) => p.via === "clause").map((p) => p.clause)).size;
+    const text = paths.some((p) => p.via === "text" && (isNum(p.c) ? p.c : p.w) > 0);
+    const bits = [];
+    if (tasks) bits.push(el("span", { class: "v-task", text: tasks + " task" + (tasks === 1 ? "" : "s") }));
+    if (clauses) bits.push(el("span", { class: "v-clause", text: clauses + " clause" + (clauses === 1 ? "" : "s") }));
+    if (text) bits.push(el("span", { class: "v-text", text: "text" }));
+    return bits.flatMap((b, i) => (i ? [" + ", b] : [b]));
+  }
+
+  function voteBar(t, maxTotal) {
+    const v = voteOf(t);
+    const pctOf = (x) => (maxTotal > 0 ? ((x / maxTotal) * 100).toFixed(1) + "%" : "0%");
+    const title = "past tasks " + v.task.toFixed(2) + " + clauses " + v.clause.toFixed(2) + " + text " + v.text.toFixed(2)
+      + (v.rf < 1 ? " × rejected " + v.rf.toFixed(2) : "") + (isNum(t.score) ? " = " + t.score.toFixed(2) : "");
+    return el("span", { class: "vote", title, "aria-label": title },
+      ...VOTE_KINDS.filter((k) => v[k] > 0).map((k) => el("span", { class: "vs v-" + k, style: "width:" + pctOf(v[k]) })));
   }
 
   function renderList(listSel, scoreSel, tools, isWp) {
@@ -388,6 +432,7 @@
     const prevRanks = prevTools ? new Map(prevTools.map((t, i) => [t.idx, i])) : null;
     if (!tools.length) host.append(el("li", { class: "empty", text: state.route ? "No tools returned." : "Pick an example or type a task." }));
 
+    const maxTotal = isWp ? Math.max(0, ...tools.map((t) => { const v = voteOf(t); return v.text + v.task + v.clause; })) : 0;
     tools.forEach((t, i) => {
       const needed = !!(gold && gold.has(t.idx));
       let change = null;
@@ -407,16 +452,17 @@
         document.querySelectorAll('.tg[data-idx="' + t.idx + '"]').forEach((c) => (c.checked = cb.checked));
         updateTeach();
       });
-      const via = isWp ? viaText(t.paths) : "";
+      const via = isWp ? voteLabel(t) : [];
       const sub = [t.tool, t.category].filter(Boolean).join(" · ");
       const li = el("li", { class: ["tool", needed && "needed", change && "chg-" + change[0]].filter(Boolean).join(" "), "data-idx": t.idx },
         cb,
         el("span", { class: "rank", text: String(i + 1) }),
         el("div", { class: "tbody" },
           el("div", { class: "tname", title: t.name || "", text: t.name || "API " + t.idx }),
-          el("div", { class: "tsub", title: sub }, sub, via && (sub ? " · " : ""), via && el("span", { class: "via", text: via }))),
+          el("div", { class: "tsub", title: sub }, sub, via.length > 0 && (sub ? " · " : ""), via.length > 0 && el("span", { class: "via" }, via))),
         el("div", { class: "tmeta" },
           change && el("span", { class: "chg " + change[0], text: change[1] }),
+          isWp && maxTotal > 0 && voteBar(t, maxTotal),
           isWp && isNum(t.score) && el("span", { class: "tscore", text: t.score.toFixed(2) }),
           needed && el("span", { class: "gold", title: "Ground truth: this task needed this tool", text: "✓" })));
       li.addEventListener("mouseenter", () => focusGraph("a" + t.idx));
@@ -424,11 +470,6 @@
       host.append(li);
     });
 
-    if (prevTools && isWp) {
-      const now = new Set(tools.map((t) => t.idx));
-      const dropped = prevTools.filter((t) => !now.has(t.idx));
-      if (dropped.length) host.append(el("li", { class: "dropped", text: "dropped out: " + dropped.map((t) => t.name || "API " + t.idx).join(", ") }));
-    }
 
     const score = $(scoreSel);
     if (gold && gold.size && tools.length) {
@@ -489,7 +530,7 @@
     const up = a.filter((i, r) => b.includes(i) && b.indexOf(i) > r).length;
     const taughtIn = used.filter((i) => a.slice(0, K).includes(i)).length;
     const parts = [];
-    if (entered) parts.push(entered + " tool" + (entered === 1 ? "" : "s") + " entered the top " + K);
+    if (entered) parts.push(entered + " tool" + (entered === 1 ? "" : "s") + " entered the top " + K + " (" + b.filter((i) => !a.includes(i)).map((i) => (before.tools.find((t) => t.idx === i) || {}).name || "API " + i).join(", ") + " dropped)");
     if (up) parts.push(up + " moved up");
     parts.push(taughtIn + "/" + used.length + " taught tools load");
     return "Re-routed: " + parts.join(", ") + ".";
@@ -497,10 +538,18 @@
 
   /* ---------- frame 3: graph + tokens ---------- */
 
+  let gIndex = null;
+
+  const partOfClause = (r, id) => {
+    const c = (r.clauses || []).find((x) => x && String(x.id) === String(id));
+    return c && isNum(c.part) ? c.part : null;
+  };
+
   function renderGraph() {
     const host = $("#graph");
     host.replaceChildren();
     host.classList.remove("focus");
+    gIndex = null;
     const r = state.route || {};
     const g = r.graph || {};
     const nodes = Array.isArray(g.nodes) ? g.nodes.filter((n) => n && n.id != null) : [];
@@ -512,9 +561,10 @@
     const W = Math.max(320, host.clientWidth);
     const H = Math.max(240, host.clientHeight);
     const byId = new Map(nodes.map((n) => [n.id, n]));
-    const col = (n) => (n.kind === "query" ? 0 : n.kind === "task" ? 1 : 2);
+    const col = (n) => (n.kind === "query" ? 0 : n.kind === "task" || n.kind === "clause" ? 1 : 2);
     const cols = [[], [], []];
     for (const n of nodes) cols[col(n)].push(n);
+    const multiPart = Array.isArray(r.parts) && r.parts.length > 1;
 
     const prevG = state.prev && state.prev.graph;
     const prevNodes = prevG && Array.isArray(prevG.nodes) ? new Set(prevG.nodes.map((n) => n.id)) : null;
@@ -526,9 +576,18 @@
       const t = byId.get(e.target);
       if (s && t && col(s) === 0 && col(t) === 1) simW.set(t.id, isNum(e.w) ? e.w : 0);
     }
-    cols[1].sort((a, b) => (simW.get(b.id) ?? 0) - (simW.get(a.id) ?? 0));
+    const clausePart = new Map(cols[1].filter((n) => n.kind === "clause").map((n) => [n.id, isNum(n.part) ? n.part : partOfClause(r, String(n.id).replace(/^c/, ""))]));
+    cols[1].sort((a, b) => {
+      if (a.kind !== b.kind) return a.kind === "task" ? -1 : 1;
+      if (a.kind === "clause") {
+        const pa = clausePart.get(a.id) ?? 99;
+        const pb = clausePart.get(b.id) ?? 99;
+        if (pa !== pb) return pa - pb;
+      }
+      return (simW.get(b.id) ?? 0) - (simW.get(a.id) ?? 0);
+    });
 
-    const top = 30;
+    const top = 40;
     const bot = 12;
     const pos = new Map();
     const xs = [42, Math.round(W * 0.33), Math.round(W * 0.585)];
@@ -558,7 +617,7 @@
 
     const root = svg("svg", { width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Subgraph used by the route" });
     root.append(svg("text", { x: 10, y: 12, class: "colh", text: "QUERY" }));
-    root.append(svg("text", { x: xs[1], y: 12, "text-anchor": "middle", class: "colh", text: "SIMILAR PAST TASKS" }));
+    root.append(svg("text", { x: xs[1], y: 12, "text-anchor": "middle", class: "colh", text: "PAST TASKS · CLAUSES" }));
     root.append(svg("text", { x: xs[2] - 8, y: 12, class: "colh", text: "APIS (top " + K + " loaded)" }));
 
     const maxByType = {};
@@ -566,7 +625,7 @@
       const ty = String(e.type || "edge").toLowerCase();
       maxByType[ty] = Math.max(maxByType[ty] || 0, isNum(e.w) ? Math.abs(e.w) : 0);
     }
-    const radius = (n) => (col(n) === 0 ? 36 : col(n) === 1 ? 7 : 7);
+    const radius = (n) => (col(n) === 0 ? 36 : 7);
     const edgeLayer = svg("g", {});
     for (const e of edges) {
       let s = byId.get(e.source);
@@ -577,21 +636,23 @@
       if (a.x > b.x) { [s, t] = [t, s]; [a, b] = [b, a]; }
       const ty = String(e.type || "edge").toLowerCase();
       const w = isNum(e.w) ? Math.abs(e.w) : 0;
-      const sw = 0.8 + 5.2 * (maxByType[ty] ? w / maxByType[ty] : 0.3);
+      const sw = 0.8 + 4.6 * (maxByType[ty] ? w / maxByType[ty] : 0.3);
       const sx = a.x + radius(s);
       const tx = b.x - radius(t);
       const mx = (sx + tx) / 2;
       const isNew = prevEdges && !prevEdges.has(e.source + ">" + e.target);
       const cls = ["edge", ty, t.selected && "sel", isNew && "new"].filter(Boolean).join(" ");
+      const part = ty === "match" ? clausePart.get(t.id) : null;
       edgeLayer.append(svg("path", {
         d: "M" + sx + "," + a.y + " C" + mx + "," + a.y + " " + mx + "," + b.y + " " + tx + "," + b.y,
         class: cls, "stroke-width": sw.toFixed(2), "data-s": s.id, "data-t": t.id,
-      }, svg("title", { text: (e.type || "edge") + (isNum(e.w) ? " · w " + e.w.toFixed(2) : "") })));
+      }, svg("title", { text: (e.type || "edge") + (isNum(e.w) ? " · w " + e.w.toFixed(2) : "") + (isNum(part) ? " · part " + (part + 1) : "") })));
     }
     root.append(edgeLayer);
 
     const gold = goldSet();
     const tasks = new Map((r.similar_tasks || []).map((t) => [String(t.id), t]));
+    const clauses = new Map((r.clauses || []).filter(Boolean).map((c) => [String(c.id), c]));
     const apiInfo = new Map();
     for (const t of [...(r.baseline || []), ...(r.tools || [])]) if (t) apiInfo.set(t.idx, t);
     const apiName = (i) => (apiInfo.get(i) && apiInfo.get(i).name) || (byId.get("a" + i) && byId.get("a" + i).label) || "API " + i;
@@ -601,16 +662,26 @@
       const p = pos.get(n.id);
       const c = col(n);
       const isNew = prevNodes && !prevNodes.has(n.id);
-      const gEl = svg("g", { class: ["node", n.selected && "sel", isNew && "new"].filter(Boolean).join(" "), "data-id": n.id, transform: "translate(" + p.x + "," + p.y + ")" });
+      const kindCls = n.kind === "clause" ? "clause" : c === 1 ? "task" : "";
+      const gEl = svg("g", { class: ["node", kindCls, n.selected && "sel", isNew && "new"].filter(Boolean).join(" "), "data-id": n.id, transform: "translate(" + p.x + "," + p.y + ")" });
       if (c === 0) {
         gEl.append(svg("rect", { x: -36, y: -12, width: 72, height: 24, rx: 12, class: "q" }));
         gEl.append(svg("text", { x: 0, y: 4, "text-anchor": "middle", class: "qt", text: trunc(n.label || "your task", 11) }));
       } else if (c === 1) {
         if (isNew) gEl.append(svg("circle", { r: 7, class: "ring2" }));
-        gEl.append(svg("circle", { r: 7, class: "t" }));
         const w = simW.get(n.id);
-        gEl.append(svg("text", { x: 0, y: -11, "text-anchor": "middle", class: "lbl" },
-          trunc(n.label || "Task " + taskId(n), 16), isNum(w) ? svg("tspan", { class: "w", text: "  " + w.toFixed(2) }) : null));
+        if (n.kind === "clause") {
+          gEl.append(svg("rect", { x: -5.5, y: -5.5, width: 11, height: 11, rx: 2, transform: "rotate(45)", class: "c" }));
+          const cl = clauses.get(String(n.id).replace(/^c/, "")) || {};
+          const part = clausePart.get(n.id);
+          const label = (multiPart && isNum(part) ? "P" + (part + 1) + " · " : "") + (cl.task != null ? "Task " + cl.task : n.label || "Clause");
+          gEl.append(svg("text", { x: 0, y: -11, "text-anchor": "middle", class: "lbl" },
+            trunc(label, 18), isNum(w) ? svg("tspan", { class: "w", text: "  " + w.toFixed(2) }) : null));
+        } else {
+          gEl.append(svg("circle", { r: 7, class: "t" }));
+          gEl.append(svg("text", { x: 0, y: -11, "text-anchor": "middle", class: "lbl" },
+            trunc(n.label || "Task " + taskId(n), 16), isNum(w) ? svg("tspan", { class: "w", text: "  " + w.toFixed(2) }) : null));
+        }
       } else {
         const idx = apiIdx(n);
         if (n.selected) gEl.append(svg("circle", { r: 10, class: "ring" }));
@@ -621,12 +692,19 @@
           trunc(n.label || apiName(idx), labelChars - (needed ? 2 : 0)),
           needed ? svg("tspan", { class: "ck", text: " ✓" }) : null));
       }
-      gEl.addEventListener("mouseenter", (ev) => { focusGraph(n.id); showTip(ev, ...nodeTip(n, { tasks, apiInfo, apiName, rankWp, rankBm, gold, simW })); });
+      const ctx = { tasks, clauses, clausePart, apiInfo, apiName, rankWp, rankBm, gold, simW };
+      gEl.addEventListener("mouseenter", (ev) => { focusGraph(n.id); showTip(ev, ...nodeTip(n, ctx)); });
       gEl.addEventListener("mousemove", (ev) => moveTip(ev));
       gEl.addEventListener("mouseleave", () => { focusGraph(null); hideTip(); });
       root.append(gEl);
     }
     host.append(root);
+
+    const colOf = {};
+    const partNodes = {};
+    for (const n of nodes) colOf[n.id] = col(n);
+    for (const [id, part] of clausePart) if (isNum(part)) (partNodes[part] = partNodes[part] || []).push(id);
+    gIndex = { colOf, partNodes };
   }
 
   function nodeTip(n, ctx) {
@@ -645,37 +723,74 @@
         used.length && el("div", { class: "ts", text: "USED → " + used.join(", ") }),
       ];
     }
+    if (n.kind === "clause") {
+      const cl = ctx.clauses.get(String(n.id).replace(/^c/, "")) || {};
+      const part = ctx.clausePart.get(n.id);
+      const parts = (state.route && state.route.parts) || [];
+      const w = isNum(cl.w) ? cl.w : ctx.simW.get(n.id);
+      const needs = Array.isArray(cl.tools) ? cl.tools.map(ctx.apiName) : [];
+      return [
+        el("div", { class: "th", text: cl.task != null ? "Clause of Task " + cl.task : n.label || "Clause" }),
+        el("div", { class: "ts", text: "MATCH" + (isNum(w) ? " · w " + w.toFixed(2) : "") + (isNum(part) ? " · part " + (part + 1) + " of your task" : "") }),
+        (cl.text || n.text) && el("div", { class: "tt", text: "“" + trunc(cl.text || n.text, 300) + "”" }),
+        isNum(part) && parts[part] && el("div", { class: "ts", text: "matched: “" + trunc(parts[part], 120) + "”" }),
+        needs.length && el("div", { class: "ts", text: "NEEDS → " + needs.join(", ") }),
+      ];
+    }
     const idx = apiIdx(n);
     const a = ctx.apiInfo.get(idx) || {};
     const rw = ctx.rankWp.get(idx);
     const rb = ctx.rankBm.get(idx);
+    const v = rw != null ? voteOf(a) : null;
     return [
       el("div", { class: "th", text: a.name || n.label || "API " + idx }),
       el("div", { class: "ts", text: [a.tool || n.tool, a.category || n.category].filter(Boolean).join(" · ") }),
       el("div", { class: "tt", text: (rw != null ? "Waypoint #" + (rw + 1) : "Not loaded by Waypoint") + " · " + (rb != null ? "BM25 #" + (rb + 1) : "not in BM25 top " + K) + (isNum(a.score) ? " · score " + a.score.toFixed(2) : "") }),
+      v && el("div", { class: "ts", text: "votes: tasks " + v.task.toFixed(2) + " · clauses " + v.clause.toFixed(2) + " · text " + v.text.toFixed(2) + (v.rf < 1 ? " · ×" + v.rf.toFixed(2) + " rejected" : "") }),
       ctx.gold && ctx.gold.has(idx) && el("div", { class: "tt", style: "color: var(--ok)", text: "✓ This task truly needed this tool" }),
     ];
   }
 
-  function focusGraph(id) {
+  function focusGraph(target) {
     const host = $("#graph");
     host.querySelectorAll(".hl").forEach((x) => x.classList.remove("hl"));
-    document.querySelectorAll(".tool.hl").forEach((x) => x.classList.remove("hl"));
-    if (id == null || !host.querySelector('[data-id="' + id + '"]')) {
+    document.querySelectorAll(".tool.hl, .part.hl").forEach((x) => x.classList.remove("hl"));
+    const gi = gIndex;
+    const seeds = target == null || !gi ? [] : typeof target === "object" ? gi.partNodes[target.part] || [] : [target];
+    const live = seeds.filter((id) => id in gi.colOf);
+    if (!live.length) {
       host.classList.remove("focus");
       return;
     }
-    host.classList.add("focus");
-    const keep = new Set([id]);
-    host.querySelectorAll(".edge").forEach((e) => {
-      if (e.dataset.s === id || e.dataset.t === id) {
-        e.classList.add("hl");
-        keep.add(e.dataset.s);
-        keep.add(e.dataset.t);
+    const edges = [...host.querySelectorAll(".edge")];
+    const keepE = new Set();
+    const keepN = new Set(live);
+    const add = (e) => { keepE.add(e); keepN.add(e.dataset.s); keepN.add(e.dataset.t); };
+    const touches = (e, id) => e.dataset.s === id || e.dataset.t === id;
+    for (const id of live) {
+      const c = gi.colOf[id];
+      if (c === 0) { edges.forEach(add); continue; }
+      if (c === 1) { edges.forEach((e) => touches(e, id) && add(e)); continue; }
+      const mids = new Set();
+      for (const e of edges) {
+        if (!touches(e, id)) continue;
+        add(e);
+        const other = e.dataset.s === id ? e.dataset.t : e.dataset.s;
+        if (gi.colOf[other] === 1) mids.add(other);
       }
-    });
-    host.querySelectorAll(".node").forEach((n) => keep.has(n.dataset.id) && n.classList.add("hl"));
-    if (String(id).startsWith("a")) document.querySelectorAll('.tool[data-idx="' + String(id).slice(1) + '"]').forEach((x) => x.classList.add("hl"));
+      for (const e of edges) {
+        const s = e.dataset.s;
+        const t = e.dataset.t;
+        if ((mids.has(s) && gi.colOf[t] === 0) || (mids.has(t) && gi.colOf[s] === 0)) add(e);
+      }
+    }
+    host.classList.add("focus");
+    keepE.forEach((e) => e.classList.add("hl"));
+    host.querySelectorAll(".node").forEach((n) => keepN.has(n.dataset.id) && n.classList.add("hl"));
+    for (const id of keepN) {
+      if (gi.colOf[id] === 2) document.querySelectorAll('.tool[data-idx="' + String(id).slice(1) + '"]').forEach((x) => x.classList.add("hl"));
+    }
+    if (typeof target === "object") document.querySelectorAll('.part[data-part="' + target.part + '"]').forEach((x) => x.classList.add("hl"));
   }
 
   function renderTokens() {
@@ -696,11 +811,12 @@
     ].filter((x) => isNum(x[2]));
     const max = Math.max(1, ...rows.map((x) => x[2]));
     const sim = Array.isArray(r.similar_tasks) ? r.similar_tasks.length : 0;
+    const ncl = Array.isArray(r.clauses) ? r.clauses.length : 0;
     host.replaceChildren(
       el("div", { class: "tok-head" },
         el("span", { class: "tok-big" }, fmt(loaded), el("small", { text: "tool-schema tokens in context" })),
         isNum(loaded) && isNum(cat) && loaded > 0 && el("span", { class: "tok-ratio", text: Math.round(cat / loaded) + "× fewer than the whole catalog" }),
-        el("span", { class: "tok-note", text: (sim ? sim + " similar past tasks traversed · " : "") + (isNum(loaded) && isNum(cat) && cat > 0 ? ((loaded / cat) * 100).toFixed(2) + "% of " + fmt(cat) : "") })),
+        el("span", { class: "tok-note", text: (sim || ncl ? [sim && sim + " past tasks", ncl && ncl + " clauses"].filter(Boolean).join(" + ") + " traversed · " : "") + (isNum(loaded) && isNum(cat) && cat > 0 ? ((loaded / cat) * 100).toFixed(2) + "% of " + fmt(cat) : "") })),
       el("div", { class: "tok-rows" }, rows.map(([cls, label, v]) => el("div", { class: "tok-row " + cls },
         el("span", { text: label }),
         el("span", { class: "tr" }, el("span", { class: "fl", style: "display:block;width:" + ((v / max) * 100).toFixed(3) + "%" })),
@@ -791,15 +907,43 @@
     { id: "90115", text: "Before I sign up new users, check that their email addresses are real and send each one a welcome text.", gold: [21, 22] },
   ];
 
+  const MOCK_CLAUSES = [
+    [35401, 3540, "Check the forecast so rain doesn't ruin it.", [6]],
+    [11871, 1187, "Pull a few cocktail recipes with the ingredients.", [0, 1]],
+    [11872, 1187, "Queue up some songs to play.", [4]],
+    [22901, 2290, "Find some songs we can play at the party.", [4, 5]],
+    [88201, 8820, "How many euros will I get for my dollars?", [10]],
+    [89071, 8907, "Book a flight out of SFO.", [9]],
+    [44101, 4410, "Somewhere to stay near the beach.", [8]],
+    [51201, 5120, "Translate the greeting into her language.", [16]],
+    [51202, 5120, "Send it to her phone as a text.", [22]],
+    [60311, 6031, "Build a leg day gym routine.", [23]],
+    [60441, 6044, "Count the calories in a smoothie.", [3]],
+    [70121, 7012, "Latest crypto headlines.", [13]],
+    [93101, 9310, "What's showing at the cinema tonight?", [15]],
+    [93102, 9310, "A good restaurant near my address.", [20, 19]],
+    [14501, 1450, "Some jokes to break the ice.", [17]],
+    [14502, 1450, "A snack recipe for the team.", [2]],
+    [33051, 3305, "Check that the email addresses are real.", [21]],
+  ];
+
   const mockMem = {
     past: MOCK_PAST.map(([id, text, tools]) => ({ id, text, tools, w: Object.fromEntries(tools.map((t, i) => [t, 1 + ((id + i) % 4)])) })),
+    clauses: MOCK_CLAUSES.map(([id, task, text, tools]) => ({ id, task, text, tools })),
     learned: 19361,
     nextId: 99000001,
   };
-  const STOP = new Set("a an the and or for to of in on with my me i im is it be some few this that from at by as are what how get find tell give show can you your need want will its her his their them each one now good".split(" "));
+  const STOP = new Set("a an the and or for to of in on with my me i im is it be some few this that from at by as are what how get find tell give show can you your need want will its her his their them each one now good if so".split(" "));
   const stem = (w) => (w.length > 4 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w);
   const toks = (s) => (String(s).toLowerCase().replace(/'/g, "").match(/[a-z0-9]+/g) || []).filter((w) => w.length > 1 && !STOP.has(w)).map(stem);
   const schemaTokens = (idx) => 120 + ((idx * 53) % 130);
+  const splitParts = (s) => String(s).split(/(?<=[.?!])\s+|;\s*|,\s+and\s+/i).map((x) => x.trim()).filter((x) => toks(x).length);
+  const cosine = (a, b) => {
+    let inter = 0;
+    for (const w of a) if (b.has(w)) inter += 1;
+    return inter / Math.sqrt(Math.max(1, a.size) * Math.max(1, b.size));
+  };
+  const MOCK_REJECTED = { 17: 0.9 };
 
   function mockResults() {
     const runs = [0, 250, 500, 1000, 1500, 2000, 3000, 4000, 5000];
@@ -825,6 +969,8 @@
 
   function mockRoute(task, k) {
     const q = new Set(toks(task));
+    const parts = splitParts(task);
+    if (!parts.length) parts.push(task);
     const text = MOCK_APIS.map((a) => {
       const words = new Set(toks(a.name + " " + a.tool + " " + a.category + " " + a.kw));
       let s = 0;
@@ -832,28 +978,44 @@
       return s;
     });
     const maxText = Math.max(1, ...text);
-    const sims = mockMem.past.map((p) => {
-      const pt = new Set(toks(p.text));
-      let inter = 0;
-      for (const w of q) if (pt.has(w)) inter += 1;
-      return { p, sim: inter / Math.sqrt(Math.max(1, q.size) * Math.max(1, pt.size)) };
-    }).filter((s) => s.sim > 0.12).sort((a, b) => b.sim - a.sim).slice(0, 4);
+    const sims = mockMem.past.map((p) => ({ p, sim: cosine(q, new Set(toks(p.text))) }))
+      .filter((s) => s.sim > 0.12).sort((a, b) => b.sim - a.sim).slice(0, 3);
 
-    const score = MOCK_APIS.map((a) => ({
-      idx: a.idx,
-      s: 0.5 * (text[a.idx] / maxText),
-      paths: text[a.idx] ? [{ via: "text", w: +(text[a.idx] / maxText).toFixed(2) }] : [],
-    }));
+    const best = new Map();
+    parts.forEach((part, i) => {
+      const pt = new Set(toks(part));
+      mockMem.clauses.map((cl) => ({ cl, s: cosine(pt, new Set(toks(cl.text))), part: i }))
+        .filter((m) => m.s >= 0.3).sort((a, b) => b.s - a.s).slice(0, 2)
+        .forEach((m) => { if (!best.has(m.cl.id) || best.get(m.cl.id).s < m.s) best.set(m.cl.id, m); });
+    });
+    const matches = [...best.values()].sort((a, b) => a.part - b.part || b.s - a.s).slice(0, 6);
+
+    const acc = MOCK_APIS.map((a) => {
+      const t = +(0.5 * (text[a.idx] / maxText)).toFixed(3);
+      return { idx: a.idx, vote: { text: t, task: 0, clause: 0 }, paths: t ? [{ via: "text", w: +(text[a.idx] / maxText).toFixed(2), c: t }] : [] };
+    });
     for (const { p, sim } of sims) {
       for (const ti of p.tools) {
-        const w = Math.min(1, 0.55 + 0.15 * (p.w[ti] || 1));
-        score[ti].s += sim * w;
-        score[ti].paths.push({ via: "task", task: p.id, w: +(sim * w).toFixed(2) });
+        const c = +(sim * Math.min(1, 0.55 + 0.15 * (p.w[ti] || 1))).toFixed(3);
+        acc[ti].vote.task += c;
+        acc[ti].paths.push({ via: "task", task: p.id, w: +sim.toFixed(2), c });
       }
     }
+    for (const { cl, s, part } of matches) {
+      for (const ti of cl.tools) {
+        const c = +(0.9 * s).toFixed(3);
+        acc[ti].vote.clause += c;
+        acc[ti].paths.push({ via: "clause", clause: cl.id, part, w: +s.toFixed(2), c });
+      }
+    }
+    for (const a of acc) {
+      a.vote.rejected_factor = MOCK_REJECTED[a.idx] || 1;
+      for (const key of ["text", "task", "clause"]) a.vote[key] = +a.vote[key].toFixed(3);
+      a.score = (a.vote.text + a.vote.task + a.vote.clause) * a.vote.rejected_factor;
+    }
     const base = (i) => ({ idx: i, name: MOCK_APIS[i].name, tool: MOCK_APIS[i].tool, category: MOCK_APIS[i].category });
-    const ranked = [...score].sort((a, b) => b.s - a.s || a.idx - b.idx).slice(0, k);
-    const tools = ranked.map((x) => ({ ...base(x.idx), score: +x.s.toFixed(2), paths: x.paths }));
+    const tools = [...acc].sort((a, b) => b.score - a.score || a.idx - b.idx).slice(0, k)
+      .map((x) => ({ ...base(x.idx), score: +x.score.toFixed(2), paths: x.paths, vote: x.vote }));
     const baseline = MOCK_APIS.map((a) => a.idx).sort((a, b) => text[b] - text[a] || a - b).slice(0, k).map(base);
     const selected = new Set(tools.map((t) => t.idx));
 
@@ -868,12 +1030,22 @@
         edges.push({ source: "t" + p.id, target: "a" + ti, type: "USED", w: p.w[ti] || 1 });
       }
     }
+    for (const { cl, s } of matches) {
+      nodes.push({ id: "c" + cl.id, label: "Clause of Task " + cl.task, kind: "clause", text: cl.text });
+      edges.push({ source: "q", target: "c" + cl.id, type: "MATCH", w: +s.toFixed(2) });
+      for (const ti of cl.tools) {
+        apiIds.add(ti);
+        edges.push({ source: "c" + cl.id, target: "a" + ti, type: "NEEDS", w: 1 });
+      }
+    }
     for (const i of apiIds) nodes.push({ id: "a" + i, label: MOCK_APIS[i].name, kind: "api", selected: selected.has(i) });
 
     return {
       tools,
       baseline,
+      parts,
       similar_tasks: sims.map(({ p, sim }) => ({ id: p.id, text: p.text, sim: +sim.toFixed(2), tools: p.tools })),
+      clauses: matches.map(({ cl, s, part }) => ({ id: cl.id, task: cl.task, text: cl.text, part, w: +s.toFixed(2), tools: cl.tools })),
       tokens: {
         loaded: tools.reduce((a, t) => a + schemaTokens(t.idx), 0),
         baseline_loaded: baseline.reduce((a, t) => a + schemaTokens(t.idx), 0),
@@ -892,17 +1064,24 @@
     if (path === "/api/examples") return MOCK_EXAMPLES;
     if (path === "/api/route") return mockRoute(String(body.task || ""), body.k || K);
     if (path === "/api/feedback") {
+      const text = String(body.task || "");
       const used = (body.used || []).map(Number).filter((i) => MOCK_APIS[i]);
-      let p = mockMem.past.find((x) => x.text === body.task);
+      let p = mockMem.past.find((x) => x.text === text);
       if (p) {
         for (const i of used) {
           if (!p.tools.includes(i)) p.tools.push(i);
           p.w[i] = (p.w[i] || 0) + 1;
         }
       } else {
-        p = { id: mockMem.nextId++, text: String(body.task || ""), tools: used, w: Object.fromEntries(used.map((i) => [i, 1])) };
+        p = { id: mockMem.nextId++, text, tools: used, w: Object.fromEntries(used.map((i) => [i, 1])) };
         mockMem.past.push(p);
         mockMem.learned += 1;
+        const parts = splitParts(text);
+        parts.forEach((part, n) => {
+          const pt = new Set(toks(part));
+          const needs = parts.length === 1 ? used : used.filter((i) => toks(MOCK_APIS[i].name + " " + MOCK_APIS[i].kw).some((w) => pt.has(w)));
+          if (needs.length) mockMem.clauses.push({ id: p.id * 10 + n + 1, task: p.id, text: part, tools: needs });
+        });
       }
       return { task_id: p.id, edges_written: used.length, learned_tasks: mockMem.learned };
     }

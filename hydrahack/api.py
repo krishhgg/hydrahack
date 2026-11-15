@@ -16,13 +16,17 @@ import threading
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
+from hydrahack import mcp
 from hydrahack.data import load
-from hydrahack.router import Router
+from hydrahack.db import HydraDBError
+from hydrahack.router import MAX_PARTS, Router
+from hydrahack.router import clauses as router_clauses
 from hydrahack.store import GraphStore, Run
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -30,6 +34,8 @@ WEB = ROOT / "web"
 RESULTS = ROOT / "eval" / "results" / "waypoint-test.json"
 EXAMPLES = ROOT / "eval" / "results" / "examples.json"
 LIVE_TASK_BASE = 5_000_000
+MCP_MAX_BYTES = 64_000
+MCP_MAX_BATCH = 8
 log = logging.getLogger("waypoint")
 
 
@@ -81,17 +87,26 @@ class State:
             enc = tiktoken.get_encoding("o200k_base")
             self.tokens = {a.idx: len(enc.encode(a.text)) for a in self.ds.apis}
             self.catalog_tokens = sum(self.tokens.values())
-            self.graph.load_catalog(self.ds.apis)
+            if self.graph.catalog_size() != len(self.ds.apis):
+                self.graph.load_catalog(self.ds.apis)
+            seed = [
+                Run(int(q), self.ds.queries[q], self.ds.train[q], set())
+                for q in self.ds.stream_order
+            ]
             past = self.graph.runs()
             if not past:
-                runs = [
-                    Run(int(q), self.ds.queries[q], self.ds.train[q], set())
-                    for q in self.ds.stream_order
-                ]
-                self.graph.add_runs(runs)
-                past = [(r.task_id, r.text) for r in runs]
+                self.graph.add_runs(seed)
+                past = [(r.task_id, r.text) for r in seed]
             for task_id, text in past:
                 self.router.remember(task_id, text)
+            parts = self.graph.clause_texts()
+            if not parts:
+                split = [c for r in seed for c in self.router.split(r)]
+                self.graph.add_clauses(split)
+                parts = [(c.clause_id, c.text) for c in split]
+            for clause_id, text in parts:
+                self.router.remember_clause(clause_id, text)
+            self.clause_text = dict(parts)
             self.ids = itertools.count(max([LIVE_TASK_BASE, *(t + 1 for t, _ in past)]))
             self.held_out = {_norm(self.ds.queries[q]) for q in self.ds.test}
             self.texts = dict(past)
@@ -159,29 +174,93 @@ def route(body: RouteIn) -> dict:
     total = (time.perf_counter() - start) * 1000
     graph_ms = s.store.take_ms()
     used = s.graph.task_tools([t for t, _ in r.tasks])
-    tools = [{**_api(a), "score": round(r.scores[a], 3), "paths": r.paths[a]} for a in r.tools]
+    needs = s.graph.clause_needs([m["clause"] for m in r.clauses])
+    selected = set(r.tools)
+
+    tools = []
+    for a in r.tools:
+        vote = {"text": 0.0, "task": 0.0, "clause": 0.0}
+        for p in r.paths[a]:
+            vote[p["via"]] += p["c"]
+        tools.append(
+            {
+                **_api(a),
+                "score": round(r.scores[a], 3),
+                "paths": [{**p, "c": round(p["c"], 3)} for p in r.paths[a]],
+                "vote": {k: round(v, 3) for k, v in vote.items()}
+                | {"rejected_factor": round(r.factors.get(a, 1.0), 3)},
+            }
+        )
+
     nodes = [{"id": "q", "label": "your task", "kind": "query"}]
     edges = []
     api_nodes: dict[int, dict] = {}
-    selected = set(r.tools)
+
+    def api_node(idx: int) -> None:
+        api_nodes.setdefault(idx, {"id": f"a{idx}", **_api(idx), "kind": "api"})
+
     for t, sim in r.tasks:
+        hit = used.get(t, set())
+        if not hit & selected:
+            continue
         nodes.append(
             {"id": f"t{t}", "label": f"Task {t}", "kind": "task", "text": s.texts.get(t, "")}
         )
         edges.append({"source": "q", "target": f"t{t}", "type": "SIMILAR", "w": round(sim, 3)})
-        for a in used.get(t, ()):
-            api_nodes.setdefault(a, {"id": f"a{a}", **_api(a), "kind": "api"})
+        for a in hit:
+            api_node(a)
             edges.append({"source": f"t{t}", "target": f"a{a}", "type": "USED", "w": 1})
+    clauses = []
+    for m in sorted(r.clauses, key=lambda m: -m["w"]):
+        hit = needs.get(m["clause"], set())
+        if not hit & selected or any(c["id"] == m["clause"] for c in clauses):
+            continue
+        cid, task = m["clause"], m["clause"] // MAX_PARTS
+        text = s.clause_text.get(cid, "")
+        clauses.append(
+            {
+                "id": cid,
+                "task": task,
+                "text": text,
+                "part": m["part"],
+                "w": round(m["w"], 3),
+                "tools": sorted(hit),
+            }
+        )
+        nodes.append(
+            {
+                "id": f"c{cid}",
+                "label": f"Clause of Task {task}",
+                "kind": "clause",
+                "text": text,
+                "part": m["part"],
+            }
+        )
+        edges.append(
+            {
+                "source": "q",
+                "target": f"c{cid}",
+                "type": "MATCH",
+                "w": round(m["w"], 3),
+                "part": m["part"],
+            }
+        )
+        for a in hit:
+            api_node(a)
+            edges.append({"source": f"c{cid}", "target": f"a{a}", "type": "NEEDS", "w": 1})
     for a in r.tools:
-        api_nodes.setdefault(a, {"id": f"a{a}", **_api(a), "kind": "api"})
-        if any(p["via"] == "text" for p in r.paths[a]):
-            w = next(p["w"] for p in r.paths[a] if p["via"] == "text")
-            edges.append({"source": "q", "target": f"a{a}", "type": "TEXT", "w": w})
+        api_node(a)
+        text_paths = [p for p in r.paths[a] if p["via"] == "text"]
+        if text_paths:
+            edges.append(
+                {"source": "q", "target": f"a{a}", "type": "TEXT", "w": text_paths[0]["w"]}
+            )
     for a, n in api_nodes.items():
         nodes.append({**n, "label": n["name"], "selected": a in selected})
     return {
         "tools": tools,
         "baseline": [_api(a) for a in base.tools],
+        "parts": router_clauses(body.task),
         "similar_tasks": [
             {
                 "id": t,
@@ -191,6 +270,7 @@ def route(body: RouteIn) -> dict:
             }
             for t, sim in r.tasks
         ],
+        "clauses": clauses,
         "tokens": {
             "loaded": sum(s.tokens[a] for a in r.tools),
             "baseline_loaded": sum(s.tokens[a] for a in base.tools),
@@ -202,24 +282,81 @@ def route(body: RouteIn) -> dict:
     }
 
 
-@app.post("/api/feedback")
-def feedback(body: FeedbackIn) -> dict:
+def _learn(task: str, used_ids: list[int], offered: list[int]) -> dict:
     s = _ready()
-    if _norm(body.task) in s.held_out:
+    if _norm(task) in s.held_out:
         raise HTTPException(409, "held-out test task: teaching it would leak eval labels")
-    used = {a for a in body.used if a in s.apis}
+    used = {a for a in used_ids if a in s.apis}
     if not used:
         raise HTTPException(422, "used must name at least one known api idx")
-    rejected = {a for a in body.offered if a in s.apis} - used
+    rejected = {a for a in offered if a in s.apis} - used
     with s.lock:
         task_id = next(s.ids)
-    s.router.feedback([Run(task_id, body.task, used, rejected)])
-    s.texts[task_id] = body.task
+    try:
+        parts = s.router.feedback([Run(task_id, task, used, rejected)])
+    except HydraDBError as exc:
+        raise HTTPException(503, f"HydraDB refused the write: {exc}") from exc
+    for c in parts:
+        s.clause_text[c.clause_id] = c.text
+    s.texts[task_id] = task
     return {
         "task_id": task_id,
         "edges_written": len(used) + len(rejected),
         "learned_tasks": len(s.router.task_index),
     }
+
+
+@app.post("/api/feedback")
+def feedback(body: FeedbackIn) -> dict:
+    return _learn(body.task, body.used, body.offered)
+
+
+def _find_tools(task: str, k: int) -> dict:
+    s = _ready()
+    r = s.router.route(task[:4000], k)
+    return {
+        "tools": [{**mcp.tool_schema(s.apis[a]), "score": round(r.scores[a], 3)} for a in r.tools],
+        "tokens_loaded": sum(s.tokens[a] for a in r.tools),
+        "tokens_catalog": s.catalog_tokens,
+        "learned_tasks": len(s.router.task_index),
+    }
+
+
+@app.post("/mcp")
+async def mcp_endpoint(request: Request) -> Response:
+    """MCP over Streamable HTTP with plain JSON responses (no SSE stream). Bodies and batches are
+    capped, and the blocking routing work runs in the thread pool so /health stays responsive."""
+    raw = await request.body()
+    if len(raw) > MCP_MAX_BYTES:
+        return JSONResponse(mcp._error(None, -32600, "request too large"), status_code=413)
+    try:
+        body = json.loads(raw)
+    except ValueError:
+        return JSONResponse(mcp._error(None, -32700, "parse error"), status_code=400)
+    messages = body if isinstance(body, list) else [body]
+    if not messages or len(messages) > MCP_MAX_BATCH:
+        msg = f"batch must hold 1 to {MCP_MAX_BATCH} messages"
+        return JSONResponse(mcp._error(None, -32600, msg), status_code=400)
+
+    def learn(task: str, used: list[int], offered: list[int]) -> dict:
+        return _learn(task[:4000], used, offered)
+
+    def run() -> list[dict]:
+        return [r for r in (mcp.handle(m, _find_tools, learn) for m in messages) if r is not None]
+
+    try:
+        replies = await run_in_threadpool(run)
+    except HTTPException as exc:
+        msg_id = messages[0].get("id") if isinstance(messages[0], dict) else None
+        return JSONResponse(mcp._error(msg_id, -32603, str(exc.detail)))
+    if not replies:
+        return Response(status_code=202)
+    return JSONResponse(replies if isinstance(body, list) else replies[0])
+
+
+@app.get("/mcp")
+def mcp_get() -> Response:
+    return Response(status_code=405, headers={"Allow": "POST"})
 
 
 @app.get("/api/examples")

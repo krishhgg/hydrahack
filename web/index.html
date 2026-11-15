@@ -37,6 +37,7 @@
     <div class="ph"><span class="step">2</span><h2>Route a task live</h2><span id="latency" class="lat"></span></div>
     <form id="route-form" class="route-form" autocomplete="off">
       <textarea id="task" rows="3" placeholder="Describe what the agent needs to do, then press Enter"></textarea>
+      <div id="parts" class="parts" hidden></div>
       <div class="examples-label">Held-out test tasks <span class="muted">· pick one to see which tools it truly needed</span></div>
       <div id="examples" class="examples"></div>
       <div class="actions">
@@ -65,8 +66,9 @@
     <div class="glegend">
       <span><i class="dot q"></i>query</span>
       <span><i class="dot t"></i>past Task</span>
+      <span><i class="dot c"></i>Clause</span>
       <span><i class="dot a sel"></i>Api loaded</span>
-      <span><i class="dot a"></i>Api not loaded</span>
+      <span><i class="dot a"></i>not loaded</span>
       <span class="muted">width = weight</span>
     </div>
     <div id="graph" class="graph"></div>

@@ -12,6 +12,7 @@
   --bm: #8a92a3;
   --fm: #c08cff;
   --task: #f5a524;
+  --clause: #f472b6;
   --ok: #34d399;
   --ok-soft: rgba(52, 211, 153, 0.13);
   --bad: #f87171;
@@ -175,7 +176,7 @@ b { font-weight: 600; }
   outline: none;
 }
 .route-form textarea:focus { border-color: var(--wp); box-shadow: 0 0 0 3px var(--wp-soft); }
-.examples-label { margin: 8px 0 5px; font-size: 11px; color: var(--text); }
+.examples-label { margin: 7px 0 4px; font-size: 11px; color: var(--text); }
 .examples { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
 .chip {
   min-width: 0;
@@ -231,10 +232,10 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
   grid-template-columns: 18px 14px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 4px 4px;
+  padding: 2px 4px;
   border-top: 1px solid var(--line);
   border-radius: 4px;
-  min-height: 32px;
+  min-height: 30px;
 }
 .tool:first-child { border-top-color: transparent; }
 .tool.needed { background: linear-gradient(90deg, var(--ok-soft), transparent 70%); }
@@ -242,7 +243,30 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
 .tool .rank { font: 11px var(--mono); color: var(--dim); text-align: right; }
 .tname { font-weight: 600; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tsub { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tsub .via { color: var(--task); }
+.tsub .via { color: var(--muted); }
+.via .v-task { color: var(--task); }
+.via .v-clause { color: var(--clause); }
+.via .v-text { color: #b4bccb; }
+.vote { display: flex; width: 58px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; flex: none; }
+.vote .vs { display: block; height: 100%; }
+.vote .v-task { background: var(--task); }
+.vote .v-clause { background: var(--clause); }
+.vote .v-text { background: #8a92a3; }
+.parts { display: flex; align-items: center; gap: 5px; margin-top: 6px; min-width: 0; overflow: hidden; }
+.parts-l { font-size: 10.5px; color: var(--dim); flex: none; }
+.part {
+  display: inline-flex; align-items: center; gap: 5px;
+  min-width: 0; flex: 0 1 auto; max-width: 60%;
+  font-size: 11px; color: var(--muted);
+  border: 1px solid rgba(244, 114, 182, 0.35);
+  background: rgba(244, 114, 182, 0.08);
+  border-radius: 999px;
+  padding: 1px 8px 1px 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: default;
+}
+.part b { flex: none; width: 16px; height: 16px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--clause); color: #1a0711; font: 700 10px var(--mono); }
+.part.hl, .part:hover { color: var(--text); border-color: var(--clause); }
 .tmeta { display: flex; align-items: center; gap: 6px; }
 .tscore { font: 10.5px var(--mono); color: var(--dim); }
 .gold {
@@ -257,7 +281,6 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
 .chg.down { color: var(--bad); background: rgba(248, 113, 113, 0.1); }
 .tool.chg-new, .tool.chg-up { animation: rowin 1.8s ease-out; }
 @keyframes rowin { 0% { background: rgba(52, 211, 153, 0.35); } 100% { background: transparent; } }
-.dropped { font-size: 10.5px; color: var(--dim); padding: 3px 4px; border-top: 1px dashed var(--line); }
 .tg {
   appearance: none; -webkit-appearance: none;
   width: 16px; height: 16px; margin: 0;
@@ -277,6 +300,7 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
 .glegend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .glegend .dot.q { background: var(--text); border-radius: 3px; }
 .glegend .dot.t { background: var(--task); }
+.glegend .dot.c { background: var(--clause); border-radius: 2px; transform: rotate(45deg) scale(0.85); }
 .glegend .dot.a { background: var(--panel); border: 1.5px solid var(--dim); }
 .glegend .dot.a.sel { background: var(--wp); border-color: var(--wp); }
 .graph { flex: 1 1 auto; min-height: 260px; position: relative; }
@@ -287,16 +311,22 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
 .graph .edge.used { stroke: var(--dim); opacity: 0.45; }
 .graph .edge.used.sel { stroke: var(--wp); opacity: 0.75; }
 .graph .edge.text { stroke: var(--muted); opacity: 0.25; stroke-dasharray: 3 4; }
+.graph .edge.match { stroke: var(--clause); opacity: 0.55; }
+.graph .edge.needs { stroke: var(--dim); opacity: 0.4; stroke-dasharray: 5 3; }
+.graph .edge.needs.sel { stroke: var(--clause); opacity: 0.7; }
+
 .graph .edge.new { stroke: var(--ok); opacity: 0.95; animation: edgein 1.6s ease-out; }
 @keyframes edgein { 0% { stroke-width: 10; opacity: 0.2; } 100% { opacity: 0.95; } }
 .graph .node { cursor: default; transition: opacity 0.15s; }
 .graph .node .q { fill: var(--text); }
 .graph .node .qt { fill: var(--bg); font: 700 11px var(--sans); }
 .graph .node .t { fill: var(--task); stroke: var(--panel); stroke-width: 2; }
+.graph .node .c { fill: var(--clause); stroke: var(--panel); stroke-width: 2; }
+.graph .node.clause .lbl { fill: #e7a6c8; }
 .graph .node .a { fill: var(--panel); stroke: var(--dim); stroke-width: 1.6; }
 .graph .node.sel .a { fill: var(--wp); stroke: var(--wp); }
 .graph .node.sel .ring { fill: none; stroke: var(--wp); stroke-opacity: 0.35; stroke-width: 4; }
-.graph .node.new .t, .graph .node.new .a { stroke: var(--ok); stroke-width: 2.5; }
+.graph .node.new .t, .graph .node.new .a, .graph .node.new .c { stroke: var(--ok); stroke-width: 2.5; }
 .graph .node.new .ring2 { fill: none; stroke: var(--ok); stroke-width: 2; animation: pulse 1.6s ease-out 2; }
 @keyframes pulse { 0% { r: 7; opacity: 1; } 100% { r: 22; opacity: 0; } }
 .graph .lbl { font: 11px var(--sans); fill: var(--muted); }

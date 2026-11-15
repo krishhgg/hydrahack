@@ -37,25 +37,28 @@ def block(r: dict) -> str:
         f"{pct(h['recall5_baseline'])} |",
         f"| Flat memory: copy the nearest past run's tools | {pct(h['flat_memory'])} | "
         f"{pct(r['curve'][-1]['flat_memory']['recall'])} |",
+        f"| Flat k-NN memory: Waypoint's weights and candidate budget over whole past runs | "
+        f"{pct(h['flat_knn'])} | {pct(r['curve'][-1]['flat_knn']['recall'])} |",
         f"| **Waypoint** (experience graph in HydraDB) | **{pct(h['waypoint'])}** | "
         f"**{pct(h['recall5_waypoint'])}** |",
         "",
         "Learning curve (Completeness@5 on the same held-out tasks after each batch of runs):",
         "",
-        "| Runs fed back | BM25 | Flat memory | Waypoint |",
-        "|---|---|---|---|",
+        "| Runs fed back | BM25 | Flat memory | Flat k-NN | Waypoint |",
+        "|---|---|---|---|---|",
     ]
     for p in r["curve"]:
         lines.append(
             f"| {p['runs']:,} | {pct(p['bm25']['completeness'])} | "
-            f"{pct(p['flat_memory']['completeness'])} | {pct(p['waypoint']['completeness'])} |"
+            f"{pct(p['flat_memory']['completeness'])} | {pct(p['flat_knn']['completeness'])} | "
+            f"{pct(p['waypoint']['completeness'])} |"
         )
     lines += [
         "",
         "Slices at the end of the stream (Completeness@5):",
         "",
-        "| Slice | Tasks | BM25 | Flat memory | Waypoint |",
-        "|---|---|---|---|---|",
+        "| Slice | Tasks | BM25 | Flat memory | Flat k-NN | Waypoint |",
+        "|---|---|---|---|---|---|",
     ]
     names = {
         "seen_toolset": "Tool set seen in training",
@@ -64,7 +67,7 @@ def block(r: dict) -> str:
     for key, s in r["slices"].items():
         lines.append(
             f"| {names.get(key, key)} | {s['n']:,} | {pct(s['bm25'])} | "
-            f"{pct(s['flat_memory'])} | {pct(s['waypoint'])} |"
+            f"{pct(s['flat_memory'])} | {pct(s['flat_knn'])} | {pct(s['waypoint'])} |"
         )
     lines += [
         "",
