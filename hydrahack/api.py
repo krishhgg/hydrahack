@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 
 from hydrahack import mcp
 from hydrahack.data import load
+from hydrahack.db import HydraDBError
 from hydrahack.router import MAX_PARTS, Router
 from hydrahack.router import clauses as router_clauses
 from hydrahack.store import GraphStore, Run
@@ -83,7 +84,8 @@ class State:
             enc = tiktoken.get_encoding("o200k_base")
             self.tokens = {a.idx: len(enc.encode(a.text)) for a in self.ds.apis}
             self.catalog_tokens = sum(self.tokens.values())
-            self.graph.load_catalog(self.ds.apis)
+            if self.graph.catalog_size() != len(self.ds.apis):
+                self.graph.load_catalog(self.ds.apis)
             seed = [
                 Run(int(q), self.ds.queries[q], self.ds.train[q], set())
                 for q in self.ds.stream_order
@@ -287,7 +289,11 @@ def _learn(task: str, used_ids: list[int], offered: list[int]) -> dict:
     rejected = {a for a in offered if a in s.apis} - used
     with s.lock:
         task_id = next(s.ids)
-    for c in s.router.feedback([Run(task_id, task, used, rejected)]):
+    try:
+        parts = s.router.feedback([Run(task_id, task, used, rejected)])
+    except HydraDBError as exc:
+        raise HTTPException(503, f"HydraDB refused the write: {exc}") from exc
+    for c in parts:
         s.clause_text[c.clause_id] = c.text
     s.texts[task_id] = task
     return {
