@@ -1,0 +1,22 @@
+[
+ {
+  "task": "I'm planning a surprise birthday party for my best friend. Can you help me find a list of popular cocktails to serve at the party? Also, I need some suggestions for cocktail recipes that are easy to make.",
+  "k": 5
+ },
+ {
+  "task": "I'm planning a trip to Istanbul and I need to know the postal code of the hotel area, the current exchange rate from USD to TRY and the weather forecast for next week.",
+  "k": 5
+ },
+ {
+  "task": "My company wants to track a shipment with ID 6045e2f44e1b233199a5e77a and check the health of our carbon-accounting API.",
+  "k": 5
+ },
+ {
+  "task": "Find me trending songs this week, the lyrics of the top one and a related YouTube video.",
+  "k": 5
+ },
+ {
+  "task": "get me a random joke and a fun fact about cats",
+  "k": 3
+ }
+]
