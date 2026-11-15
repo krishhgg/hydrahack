@@ -361,8 +361,9 @@ def mcp_get() -> Response:
 
 @app.get("/api/examples")
 def examples() -> list[dict]:
-    """Held-out tasks for the demo. eval/run_eval.py picks the shortest ones Waypoint completes
-    and BM25 does not; they are showcase picks, the headline numbers cover every test task."""
+    """Held-out tasks for the demo. eval/examples.py picks the shortest novel tool combinations
+    Waypoint completes and both BM25 and flat k-NN miss; they are showcase picks, the headline
+    numbers cover every test task."""
     s = _ready()
     if EXAMPLES.exists():
         return json.loads(EXAMPLES.read_text())
