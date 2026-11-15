@@ -1,0 +1,33 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-fly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  fly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      FLY_APP_NAME: ${{ vars.FLY_APP_NAME || 'hydrahack-live' }}
+    steps:
+      - name: Check for FLY_API_TOKEN
+        id: gate
+        run: |
+          if [ -n "$FLY_API_TOKEN" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"; else echo "FLY_API_TOKEN secret not set, skipping deploy"; fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.enabled == 'true'
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
+        if: steps.gate.outputs.enabled == 'true'
+      - name: Deploy to Fly
+        if: steps.gate.outputs.enabled == 'true'
+        run: flyctl deploy --app "$FLY_APP_NAME" --config fly.toml --remote-only --ha=false --yes

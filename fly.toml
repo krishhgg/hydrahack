@@ -1,0 +1,34 @@
+# Fly.io config: one app, one machine, HydraDB and the FastAPI app in one container
+# (infra/fly/Dockerfile), so HydraDB listens on loopback only. See docs/deploy.md.
+# infra/fly/deploy.sh passes --app, so FLY_APP_NAME overrides the name below.
+app = "hydrahack-live"
+primary_region = "sjc"
+
+[build]
+  dockerfile = "infra/fly/Dockerfile"
+
+[env]
+  PORT = "8080"
+
+[[mounts]]
+  source = "hydradb_data"
+  destination = "/data"
+  initial_size = "3gb"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = false
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"
+    interval = "15s"
+    timeout = "10s"
+    grace_period = "40s"
+
+[[vm]]
+  size = "shared-cpu-2x"
+  memory = "2gb"
