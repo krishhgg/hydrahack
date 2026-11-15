@@ -7,8 +7,10 @@
   "params": {
     "lex_top": 30,
     "task_top": 8,
+    "clause_top": 6,
     "w_lex": 1.0,
     "w_exp": 4.0,
+    "w_needs": 1.0,
     "w_rej": 0.3,
     "sim_power": 1.0
   },
@@ -69,15 +71,15 @@
         }
       },
       "latency_ms": {
-        "p50": 8.1,
-        "p95": 15.9
+        "p50": 1.7,
+        "p95": 5.4
       }
     },
     {
       "runs": 250,
       "waypoint": {
-        "completeness": 0.2899,
-        "recall": 0.5841,
+        "completeness": 0.2773,
+        "recall": 0.5739,
         "n": 2373
       },
       "bm25": {
@@ -93,8 +95,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.3324,
-            "recall": 0.6101,
+            "completeness": 0.3233,
+            "recall": 0.6041,
             "n": 1865
           },
           "bm25": {
@@ -110,8 +112,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.1339,
-            "recall": 0.4887,
+            "completeness": 0.1083,
+            "recall": 0.4631,
             "n": 508
           },
           "bm25": {
@@ -127,15 +129,15 @@
         }
       },
       "latency_ms": {
-        "p50": 27.9,
-        "p95": 47.7
+        "p50": 43.6,
+        "p95": 68.8
       }
     },
     {
       "runs": 500,
       "waypoint": {
         "completeness": 0.3295,
-        "recall": 0.6171,
+        "recall": 0.6181,
         "n": 2373
       },
       "bm25": {
@@ -151,8 +153,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.3791,
-            "recall": 0.6482,
+            "completeness": 0.3818,
+            "recall": 0.6484,
             "n": 1865
           },
           "bm25": {
@@ -168,8 +170,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.1476,
-            "recall": 0.5031,
+            "completeness": 0.1378,
+            "recall": 0.5067,
             "n": 508
           },
           "bm25": {
@@ -185,15 +187,15 @@
         }
       },
       "latency_ms": {
-        "p50": 23.8,
-        "p95": 40.6
+        "p50": 41.9,
+        "p95": 64.8
       }
     },
     {
       "runs": 1000,
       "waypoint": {
-        "completeness": 0.3772,
-        "recall": 0.6476,
+        "completeness": 0.3932,
+        "recall": 0.6588,
         "n": 2373
       },
       "bm25": {
@@ -209,8 +211,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.4365,
-            "recall": 0.6821,
+            "completeness": 0.4509,
+            "recall": 0.6903,
             "n": 1865
           },
           "bm25": {
@@ -226,8 +228,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.1594,
-            "recall": 0.521,
+            "completeness": 0.1811,
+            "recall": 0.5435,
             "n": 508
           },
           "bm25": {
@@ -243,15 +245,15 @@
         }
       },
       "latency_ms": {
-        "p50": 28.2,
-        "p95": 46.1
+        "p50": 47.8,
+        "p95": 73.4
       }
     },
     {
       "runs": 2000,
       "waypoint": {
-        "completeness": 0.4206,
-        "recall": 0.6735,
+        "completeness": 0.448,
+        "recall": 0.6923,
         "n": 2373
       },
       "bm25": {
@@ -267,8 +269,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.4831,
-            "recall": 0.7062,
+            "completeness": 0.5094,
+            "recall": 0.7223,
             "n": 1865
           },
           "bm25": {
@@ -284,8 +286,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.1909,
-            "recall": 0.5536,
+            "completeness": 0.2224,
+            "recall": 0.5825,
             "n": 508
           },
           "bm25": {
@@ -301,15 +303,15 @@
         }
       },
       "latency_ms": {
-        "p50": 29.9,
-        "p95": 53.2
+        "p50": 48.9,
+        "p95": 76.3
       }
     },
     {
       "runs": 4000,
       "waypoint": {
-        "completeness": 0.4884,
-        "recall": 0.7185,
+        "completeness": 0.5255,
+        "recall": 0.7447,
         "n": 2373
       },
       "bm25": {
@@ -325,8 +327,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.556,
-            "recall": 0.7524,
+            "completeness": 0.5882,
+            "recall": 0.7749,
             "n": 1865
           },
           "bm25": {
@@ -342,8 +344,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.2402,
-            "recall": 0.5942,
+            "completeness": 0.2953,
+            "recall": 0.634,
             "n": 508
           },
           "bm25": {
@@ -359,15 +361,15 @@
         }
       },
       "latency_ms": {
-        "p50": 25.2,
-        "p95": 45.8
+        "p50": 59.7,
+        "p95": 92.9
       }
     },
     {
       "runs": 8000,
       "waypoint": {
-        "completeness": 0.571,
-        "recall": 0.7636,
+        "completeness": 0.6098,
+        "recall": 0.7898,
         "n": 2373
       },
       "bm25": {
@@ -383,8 +385,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.6579,
-            "recall": 0.8069,
+            "completeness": 0.6869,
+            "recall": 0.8246,
             "n": 1865
           },
           "bm25": {
@@ -400,8 +402,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.252,
-            "recall": 0.6048,
+            "completeness": 0.3268,
+            "recall": 0.6619,
             "n": 508
           },
           "bm25": {
@@ -417,15 +419,15 @@
         }
       },
       "latency_ms": {
-        "p50": 21.4,
-        "p95": 34.4
+        "p50": 56.9,
+        "p95": 88.4
       }
     },
     {
       "runs": 12000,
       "waypoint": {
-        "completeness": 0.611,
-        "recall": 0.7867,
+        "completeness": 0.6469,
+        "recall": 0.8086,
         "n": 2373
       },
       "bm25": {
@@ -441,8 +443,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.7024,
-            "recall": 0.8301,
+            "completeness": 0.7249,
+            "recall": 0.8438,
             "n": 1865
           },
           "bm25": {
@@ -458,8 +460,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.2756,
-            "recall": 0.6271,
+            "completeness": 0.3602,
+            "recall": 0.6793,
             "n": 508
           },
           "bm25": {
@@ -475,15 +477,15 @@
         }
       },
       "latency_ms": {
-        "p50": 20.3,
-        "p95": 36.5
+        "p50": 58.2,
+        "p95": 90.7
       }
     },
     {
       "runs": 16000,
       "waypoint": {
-        "completeness": 0.6464,
-        "recall": 0.8024,
+        "completeness": 0.6793,
+        "recall": 0.8276,
         "n": 2373
       },
       "bm25": {
@@ -499,8 +501,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.741,
-            "recall": 0.8486,
+            "completeness": 0.7576,
+            "recall": 0.8629,
             "n": 1865
           },
           "bm25": {
@@ -516,8 +518,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.2992,
-            "recall": 0.6327,
+            "completeness": 0.3917,
+            "recall": 0.6982,
             "n": 508
           },
           "bm25": {
@@ -533,15 +535,15 @@
         }
       },
       "latency_ms": {
-        "p50": 23.9,
-        "p95": 42.8
+        "p50": 48.0,
+        "p95": 74.7
       }
     },
     {
       "runs": 19361,
       "waypoint": {
-        "completeness": 0.6734,
-        "recall": 0.8171,
+        "completeness": 0.7033,
+        "recall": 0.8389,
         "n": 2373
       },
       "bm25": {
@@ -557,8 +559,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.7673,
-            "recall": 0.861,
+            "completeness": 0.7818,
+            "recall": 0.8737,
             "n": 1865
           },
           "bm25": {
@@ -574,8 +576,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.3287,
-            "recall": 0.6557,
+            "completeness": 0.4154,
+            "recall": 0.7111,
             "n": 508
           },
           "bm25": {
@@ -591,35 +593,35 @@
         }
       },
       "latency_ms": {
-        "p50": 23.2,
-        "p95": 38.4
+        "p50": 46.8,
+        "p95": 74.2
       }
     }
   ],
   "headline": {
     "baseline": 0.2672,
-    "waypoint": 0.6734,
+    "waypoint": 0.7033,
     "flat_memory": 0.603,
     "recall5_baseline": 0.5595,
-    "recall5_waypoint": 0.8171,
+    "recall5_waypoint": 0.8389,
     "tokens_per_task_waypoint": 714,
     "tokens_catalog": 200953,
-    "latency_p50_ms": 23.2,
-    "latency_p95_ms": 38.4
+    "latency_p50_ms": 46.8,
+    "latency_p95_ms": 74.2
   },
   "slices": {
     "seen_toolset": {
       "n": 1865,
-      "waypoint": 0.7673,
+      "waypoint": 0.7818,
       "bm25": 0.2777,
       "flat_memory": 0.6783
     },
     "novel_toolset": {
       "n": 508,
-      "waypoint": 0.3287,
+      "waypoint": 0.4154,
       "bm25": 0.2283,
       "flat_memory": 0.3268
     }
   },
-  "generated_at": "2026-11-15T22:04:34+00:00"
+  "generated_at": "2026-11-15T22:10:39+00:00"
 }

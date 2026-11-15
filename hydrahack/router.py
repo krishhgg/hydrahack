@@ -46,6 +46,7 @@ class Route:
     tasks: list[tuple[int, float]] = field(default_factory=list)
     clauses: list[dict] = field(default_factory=list)
     paths: dict[int, list[dict]] = field(default_factory=dict)
+    factors: dict[int, float] = field(default_factory=dict)
 
 
 class Router:
@@ -101,7 +102,9 @@ class Router:
         top_lex = lex[0][1] if lex else 1.0
         for a, s in lex:
             score[a] += p.w_lex * s / top_lex
-            paths.setdefault(a, []).append({"via": "text", "w": round(s / top_lex, 3)})
+            paths.setdefault(a, []).append(
+                {"via": "text", "w": round(s / top_lex, 3), "c": p.w_lex * s / top_lex}
+            )
         if not self.learn or not len(self.task_index):
             return self._finish(score, k, [], [], paths)
 
@@ -111,7 +114,9 @@ class Router:
         for t, sim in tasks:
             for a in used.get(t, ()):
                 score[a] += p.w_exp * sim
-                paths.setdefault(a, []).append({"via": "task", "task": t, "w": round(sim, 3)})
+                paths.setdefault(a, []).append(
+                    {"via": "task", "task": t, "w": round(sim, 3), "c": p.w_exp * sim}
+                )
 
         matched: list[dict] = []
         if p.w_needs and len(self.clause_index):
@@ -128,15 +133,20 @@ class Router:
                             "clause": m["clause"],
                             "part": m["part"],
                             "w": round(m["w"], 3),
+                            "c": p.w_needs * m["w"],
                         }
                     )
 
+        factor: dict[int, float] = {}
         if p.w_rej:
             cand = [a for a, _ in score.most_common(k * 3)]
             for a, (u, r) in self.store.outcomes(cand).items():
                 if r:
-                    score[a] *= 1 - p.w_rej * r / (u + r + 1)
-        return self._finish(score, k, tasks, matched, paths)
+                    factor[a] = 1 - p.w_rej * r / (u + r + 1)
+                    score[a] *= factor[a]
+        route = self._finish(score, k, tasks, matched, paths)
+        route.factors = {a: factor.get(a, 1.0) for a in route.tools}
+        return route
 
     def _finish(self, score, k, tasks, matched, paths) -> Route:
         top = [a for a, _ in score.most_common(k)]
@@ -144,7 +154,7 @@ class Router:
             top, {a: score[a] for a in top}, tasks, matched, {a: paths.get(a, []) for a in top}
         )
 
-    def feedback(self, runs: Sequence[Run]) -> None:
+    def feedback(self, runs: Sequence[Run]) -> list[Clause]:
         parts = [c for r in runs for c in self.split(r)]
         self.store.add_runs(runs)
         self.store.add_clauses(parts)
@@ -152,3 +162,4 @@ class Router:
             self.remember(r.task_id, r.text)
         for c in parts:
             self.remember_clause(c.clause_id, c.text)
+        return parts

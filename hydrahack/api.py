@@ -23,7 +23,8 @@ from pydantic import BaseModel, Field
 
 from hydrahack import mcp
 from hydrahack.data import load
-from hydrahack.router import Router
+from hydrahack.router import MAX_PARTS, Router
+from hydrahack.router import clauses as router_clauses
 from hydrahack.store import GraphStore, Run
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -100,6 +101,7 @@ class State:
                 parts = [(c.clause_id, c.text) for c in split]
             for clause_id, text in parts:
                 self.router.remember_clause(clause_id, text)
+            self.clause_text = dict(parts)
             self.ids = itertools.count(max([LIVE_TASK_BASE, *(t + 1 for t, _ in past)]))
             self.held_out = {_norm(self.ds.queries[q]) for q in self.ds.test}
             self.texts = dict(past)
@@ -167,29 +169,93 @@ def route(body: RouteIn) -> dict:
     total = (time.perf_counter() - start) * 1000
     graph_ms = s.store.take_ms()
     used = s.graph.task_tools([t for t, _ in r.tasks])
-    tools = [{**_api(a), "score": round(r.scores[a], 3), "paths": r.paths[a]} for a in r.tools]
+    needs = s.graph.clause_needs([m["clause"] for m in r.clauses])
+    selected = set(r.tools)
+
+    tools = []
+    for a in r.tools:
+        vote = {"text": 0.0, "task": 0.0, "clause": 0.0}
+        for p in r.paths[a]:
+            vote[p["via"]] += p["c"]
+        tools.append(
+            {
+                **_api(a),
+                "score": round(r.scores[a], 3),
+                "paths": [{**p, "c": round(p["c"], 3)} for p in r.paths[a]],
+                "vote": {k: round(v, 3) for k, v in vote.items()}
+                | {"rejected_factor": round(r.factors.get(a, 1.0), 3)},
+            }
+        )
+
     nodes = [{"id": "q", "label": "your task", "kind": "query"}]
     edges = []
     api_nodes: dict[int, dict] = {}
-    selected = set(r.tools)
+
+    def api_node(idx: int) -> None:
+        api_nodes.setdefault(idx, {"id": f"a{idx}", **_api(idx), "kind": "api"})
+
     for t, sim in r.tasks:
+        hit = used.get(t, set())
+        if not hit & selected:
+            continue
         nodes.append(
             {"id": f"t{t}", "label": f"Task {t}", "kind": "task", "text": s.texts.get(t, "")}
         )
         edges.append({"source": "q", "target": f"t{t}", "type": "SIMILAR", "w": round(sim, 3)})
-        for a in used.get(t, ()):
-            api_nodes.setdefault(a, {"id": f"a{a}", **_api(a), "kind": "api"})
+        for a in hit:
+            api_node(a)
             edges.append({"source": f"t{t}", "target": f"a{a}", "type": "USED", "w": 1})
+    clauses = []
+    for m in sorted(r.clauses, key=lambda m: -m["w"]):
+        hit = needs.get(m["clause"], set())
+        if not hit & selected or any(c["id"] == m["clause"] for c in clauses):
+            continue
+        cid, task = m["clause"], m["clause"] // MAX_PARTS
+        text = s.clause_text.get(cid, "")
+        clauses.append(
+            {
+                "id": cid,
+                "task": task,
+                "text": text,
+                "part": m["part"],
+                "w": round(m["w"], 3),
+                "tools": sorted(hit),
+            }
+        )
+        nodes.append(
+            {
+                "id": f"c{cid}",
+                "label": f"Clause of Task {task}",
+                "kind": "clause",
+                "text": text,
+                "part": m["part"],
+            }
+        )
+        edges.append(
+            {
+                "source": "q",
+                "target": f"c{cid}",
+                "type": "MATCH",
+                "w": round(m["w"], 3),
+                "part": m["part"],
+            }
+        )
+        for a in hit:
+            api_node(a)
+            edges.append({"source": f"c{cid}", "target": f"a{a}", "type": "NEEDS", "w": 1})
     for a in r.tools:
-        api_nodes.setdefault(a, {"id": f"a{a}", **_api(a), "kind": "api"})
-        if any(p["via"] == "text" for p in r.paths[a]):
-            w = next(p["w"] for p in r.paths[a] if p["via"] == "text")
-            edges.append({"source": "q", "target": f"a{a}", "type": "TEXT", "w": w})
+        api_node(a)
+        text_paths = [p for p in r.paths[a] if p["via"] == "text"]
+        if text_paths:
+            edges.append(
+                {"source": "q", "target": f"a{a}", "type": "TEXT", "w": text_paths[0]["w"]}
+            )
     for a, n in api_nodes.items():
         nodes.append({**n, "label": n["name"], "selected": a in selected})
     return {
         "tools": tools,
         "baseline": [_api(a) for a in base.tools],
+        "parts": router_clauses(body.task),
         "similar_tasks": [
             {
                 "id": t,
@@ -199,6 +265,7 @@ def route(body: RouteIn) -> dict:
             }
             for t, sim in r.tasks
         ],
+        "clauses": clauses,
         "tokens": {
             "loaded": sum(s.tokens[a] for a in r.tools),
             "baseline_loaded": sum(s.tokens[a] for a in base.tools),
@@ -220,7 +287,8 @@ def _learn(task: str, used_ids: list[int], offered: list[int]) -> dict:
     rejected = {a for a in offered if a in s.apis} - used
     with s.lock:
         task_id = next(s.ids)
-    s.router.feedback([Run(task_id, task, used, rejected)])
+    for c in s.router.feedback([Run(task_id, task, used, rejected)]):
+        s.clause_text[c.clause_id] = c.text
     s.texts[task_id] = task
     return {
         "task_id": task_id,

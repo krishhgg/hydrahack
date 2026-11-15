@@ -36,3 +36,21 @@ ToolBench G3 (COLT split), 600 test tasks, Python only: BM25 C@5 0.123; dense bg
 ## 2026-11-15 21:40 First test-split run
 
 Completeness@5 on 2,373 held-out tasks after 19,361 runs: BM25 0.267, flat memory 0.603, Waypoint 0.673 (eval/results/waypoint-test.json). Rejection weight 0.3 chosen on validation (0.682 / 0.688 / 0.689 for 0 / 0.3 / 0.6: within noise, kept and reported as no measurable gain). Waypoint ties flat memory on novel tool sets (0.329 vs 0.327).
+
+## 2026-11-15 22:00 Codex review of #9, and what "graph doing work" means here
+
+- Codex flagged that the default router path had no multi-hop traversal and that flat memory had a smaller retrieval budget. Recorded answer: the same algorithm on dicts returns identical rankings (parity test), so the accuracy comes from how Waypoint learns from its experience graph, not from the engine. Every multi-hop expansion we tried lowered validation accuracy: co-use, query-weighted co-use (0.717 vs 0.722, 1,000 validation tasks), and same-Tool siblings. The unused code paths were removed.
+
+## 2026-11-15 22:05 Sub-request Clause nodes
+
+- Each run is split into sentence-level Clause nodes. Every needed tool is assigned to the clause whose text best matches the tool (BM25 over the tool description), giving `(:Task)-[:HAS_CLAUSE]->(:Clause)-[:NEEDS]->(:Api)`. Each part of a new task matches past clauses and follows NEEDS.
+- Validation, 1,000 tasks, in-memory reference, full stream:
+
+  | Router | All | Novel tool sets |
+  |---|---|---|
+  | Before | 0.691 | 0.367 |
+  | Clause entry into the task index only | 0.722 | 0.419 |
+  | NEEDS edges, w_needs = 1, clause_top = 6 | 0.735 | 0.465 |
+
+  Earlier checkpoints: 0.301 vs 0.312 at 250 runs (a small early dip), then ahead from 1,000 runs on. w_needs = 2 scored 0.735 overall and 0.484 novel, but did worse early, so we kept 1.0.
+- Test split (HydraDB): Completeness@5 0.703, against 0.673 before. Novel tool sets 0.415, against 0.329 before and 0.327 for flat memory.

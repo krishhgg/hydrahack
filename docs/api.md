@@ -10,6 +10,7 @@ One FastAPI service (`hydrahack.api:app`) serves the API and the UI. It reads `H
 | GET | `/api/examples` | Eight held-out test tasks with their needed tools, for the demo |
 | GET | `/api/results` | The committed eval result (`eval/results/waypoint-test.json`) in the UI's shape |
 | GET | `/` | The single-page UI |
+| POST | `/mcp` | MCP server (Streamable HTTP, JSON responses) with two tools: `find_tools(task, k)` returns the schemas of the k tools a task needs, and `report_run(task, used, offered)` writes the outcome back |
 
 ## /api/route
 
@@ -40,3 +41,13 @@ Sample bodies for load tests (the first three are held-out test tasks):
 ## /api/feedback
 
 Request: `{"task": "<text>", "used": [4, 0, 1], "offered": [4, 0, 1, 7, 9]}`. `used` holds the api `idx` values the run actually needed; `offered` holds what the router offered, and anything offered but not used becomes a REJECTED edge. Each call writes one Task node and `len(used) + len(offered - used)` edges, so keep it out of read-only load tests.
+
+## /mcp
+
+Point any MCP client at `https://<host>/mcp`. The agent sees two tools, not 1,419:
+
+```json
+{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "find_tools", "arguments": {"task": "Find popular cocktails and the weather forecast for tonight", "k": 5}}}
+```
+
+The result's `structuredContent.tools` holds each tool's `id`, `name`, `server` (the RapidAPI tool), `description` and `inputSchema`, plus `tokens_loaded` and `tokens_catalog`. `report_run` takes `{"task", "used": [ids], "offered": [ids]}` and refuses held-out test tasks.

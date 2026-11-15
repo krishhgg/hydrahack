@@ -4,7 +4,7 @@ import pytest
 
 from hydrahack.data import Api
 from hydrahack.router import Router
-from hydrahack.store import GraphStore, MemoryStore, Run
+from hydrahack.store import Clause, GraphStore, MemoryStore, Run
 
 pytestmark = pytest.mark.integration
 
@@ -19,6 +19,11 @@ RUNS = [
     Run(2, "cocktail recipe tonight", {0, 1}, set()),
     Run(3, "weather and news for my trip", {2, 3}, {0}),
 ]
+CLAUSES = [
+    Clause(10, 1, "party drinks", {0, 1}),
+    Clause(11, 1, "and headlines", {2}),
+    Clause(30, 3, "weather and news for my trip", {2, 3}),
+]
 
 
 @pytest.fixture()
@@ -27,9 +32,11 @@ def stores():
     graph.reset_all()
     graph.load_catalog(APIS)
     graph.add_runs(RUNS)
+    graph.add_clauses(CLAUSES)
     mem = MemoryStore()
     mem.load_catalog(APIS)
     mem.add_runs(RUNS)
+    mem.add_clauses(CLAUSES)
     yield graph, mem
     graph.reset_all()
 
@@ -40,6 +47,8 @@ def test_graph_matches_reference(stores):
     assert graph.task_tools([1, 2, 3]) == mem.task_tools([1, 2, 3])
     assert graph.outcomes([0, 1, 2, 3]) == mem.outcomes([0, 1, 2, 3])
     assert sorted(graph.runs()) == sorted((r.task_id, r.text) for r in RUNS)
+    assert graph.clause_needs([10, 11, 30]) == mem.clause_needs([10, 11, 30])
+    assert sorted(graph.clause_texts()) == sorted((c.clause_id, c.text) for c in CLAUSES)
 
 
 def test_router_on_graph_learns_from_feedback(stores):
@@ -47,4 +56,6 @@ def test_router_on_graph_learns_from_feedback(stores):
     router = Router(APIS, graph)
     for task_id, text in graph.runs():
         router.remember(task_id, text)
+    for clause_id, text in graph.clause_texts():
+        router.remember_clause(clause_id, text)
     assert set(router.route("drinks for a party and the headlines", 3).tools) == {0, 1, 2}

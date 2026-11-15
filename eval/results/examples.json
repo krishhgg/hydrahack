@@ -58,11 +58,11 @@
     ]
   },
   {
-    "id": "11691",
-    "text": "I need to find a pharmacy in Sydney. Can you provide the nearest one along with its address? Also, fetch the current time and date for Sydney.",
+    "id": "3244",
+    "text": "What is the carbon footprint of using a subway for a 1000 km journey? Additionally, can you provide me with the guidelines for medical treatments?",
     "gold": [
-      234,
-      264
+      393,
+      708
     ]
   }
 ]
