@@ -10,7 +10,7 @@ Compressed kickoff (under 7 hours to the cutoff): three candidates, one attack r
 
 **Data and metric.** ToolBench G3 in the COLT split (hf.co/datasets/Tool-COLT/ToolBenchG3): 1,419 real RapidAPI endpoints, 21,361 train tasks and 2,373 test tasks, about 2.7 needed tools per task. Metric: Completeness@5, the share of held-out tasks where every needed tool is among the 5 loaded (a task with a missing tool fails), plus Recall@5 and schema tokens per task.
 
-**Quick PoC (Python only, 600 test tasks).** Stateless BM25: C@5 0.123, R@5 0.375. Dense bge-small: C@5 0.123, R@5 0.398. BM25 plus experience from 10k training runs: C@5 0.688, R@5 0.828.
+**Quick PoC (Python only, 600 test tasks; scripts in poc/).** Stateless BM25: C@5 0.123, R@5 0.375. Dense bge-small: C@5 0.123, R@5 0.398. BM25 plus experience from 10k training runs: C@5 0.688, R@5 0.828.
 
 ## B. Path learner on MetaQA (Track 1)
 
@@ -31,7 +31,7 @@ LLM-extracted entity graph; failed answers trigger gap-driven ingestion of missi
 Findings we verified ourselves:
 
 - **The COLT `tune` file is byte-identical to `test`** (reviewer finding, confirmed with `cmp`). Tuning on it would contaminate the test number, so we never read it. Validation comes from a slice carved out of train.
-- **Flat memory is a strong baseline**: the reviewer's graph-free "copy the nearest training task's tools" lookup reaches C@5 0.496 on all 2,373 test tasks with the full train set, 0.608 on test tasks whose tool set appeared in train and 0.049 on the 474 that did not. The graph has to beat this, not just BM25.
+- **Flat memory is a strong baseline** (reviewer's ad-hoc check, not yet a committed script; eval/run_eval.py regenerates a flat-memory baseline): the reviewer's graph-free "copy the nearest training task's tools" lookup reaches C@5 0.496 on all 2,373 test tasks with the full train set, 0.608 on test tasks whose tool set appeared in train and 0.049 on the 474 that did not. The graph has to beat this, not just BM25.
 - **The feedback signal is replayed labels**, not an agent discovering tools. We label it as simulated outcome feedback (the tools a successful run used), which is what a production router would log.
 
 ## Kill reasons

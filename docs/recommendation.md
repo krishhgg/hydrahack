@@ -10,12 +10,12 @@
 - **Baseline**: stateless BM25 tool search over tool descriptions, the mechanism behind Anthropic's and OpenAI's tool search today. Also reported: dense retrieval (bge-small) and a flat episodic memory that copies the nearest past task's tools, the strongest graph-free baseline the attack round found.
 - **Dataset**: ToolBench G3, COLT split (hf.co/datasets/Tool-COLT/ToolBenchG3): 1,419 real RapidAPI endpoints, 21,361 train tasks, 2,373 test tasks. The test split is never fed back into the graph. The COLT tune file is identical to test, so validation is carved from train.
 - **Curve**: the router serves training tasks in batches; after each batch the outcomes are written into HydraDB and Completeness@5 is measured on the untouched test set. x = feedback runs, y = Completeness@5, with the BM25 line flat underneath.
-- **PoC evidence** (Python only, 600 test tasks): BM25 0.123 to 0.688 after 10k runs of feedback. The eval will report all 2,373 test tasks, seen-toolset and novel-toolset slices, and the flat-memory comparison, and we will publish whatever the graph's margin over flat memory turns out to be.
+- **PoC evidence** (Python only, 600 test tasks, poc/experience_knn.py): BM25 0.123 to 0.688 after 10k runs of feedback. The eval will report all 2,373 test tasks, seen-toolset and novel-toolset slices, and the flat-memory comparison, and we will publish whatever the graph's margin over flat memory turns out to be.
 
 ## Why the graph is doing the work
 
 - Ranking is a weighted multi-hop traversal inside HydraDB: matched past Tasks to the Apis they USED, then CO_USED and same-Tool sibling hops to complete the set. The learned state, USED and CO_USED weights, lives on HydraDB edges and is what the loop changes.
-- The CO_USED and sibling hops are what can complete a tool set no past task used exactly (the novel slice, where flat memory scores 0.049).
+- The CO_USED and sibling hops are what can complete a tool set no past task used exactly (the novel slice, where the reviewer's flat-memory check scored 0.049).
 - Learned weights also drive `algo.SPpaths` with `weightProp` for the demo's "why this tool" path.
 
 ## Why this one wins
