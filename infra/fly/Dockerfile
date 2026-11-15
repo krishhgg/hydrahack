@@ -36,7 +36,8 @@ COPY infra/fly/entrypoint.sh /usr/local/bin/fly-entrypoint
 RUN chmod 0755 /usr/local/bin/fly-entrypoint /usr/local/bin/hydradb-healthcheck /usr/local/bin/hydradb-entrypoint
 
 # Both processes share the container, so the engine is reached over loopback.
-ENV APP_MODULE=hydrahack.api:app \
+ENV WAYPOINT_DATA=/data/waypoint \
+    APP_MODULE=hydrahack.api:app \
     PORT=8080 \
     HYDRADB_URL=http://127.0.0.1:8443 \
     HYDRADB_ADMIN_URL=http://127.0.0.1:9090 \
