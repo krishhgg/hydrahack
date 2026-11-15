@@ -38,8 +38,6 @@ def test_graph_matches_reference(stores):
     graph, mem = stores
     assert graph.catalog_size() == len(APIS)
     assert graph.task_tools([1, 2, 3]) == mem.task_tools([1, 2, 3])
-    assert graph.coused([0, 2]) == mem.coused([0, 2])
-    assert graph.siblings([0, 3]) == {0: {1}}
     assert graph.outcomes([0, 1, 2, 3]) == mem.outcomes([0, 1, 2, 3])
     assert sorted(graph.runs()) == sorted((r.task_id, r.text) for r in RUNS)
 

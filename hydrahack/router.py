@@ -16,11 +16,8 @@ from hydrahack.text import BM25
 class Params:
     lex_top: int = 30
     task_top: int = 8
-    seeds: int = 6
     w_lex: float = 1.0
     w_exp: float = 4.0
-    w_co: float = 0.0
-    w_sib: float = 0.0
     w_rej: float = 0.3
     sim_power: float = 1.0
 
@@ -76,22 +73,6 @@ class Router:
                         )
         if not self.learn:
             return self._finish(score, k, tasks, paths)
-        seeds = [a for a, _ in score.most_common(p.seeds)]
-        base = dict(score)
-        co = self.store.coused(seeds) if p.w_co else {}
-        sib = self.store.siblings(seeds) if p.w_sib else {}
-        for s in seeds:
-            c = co.get(s)
-            if c:
-                total = sum(c.values())
-                for b, n in c.items():
-                    w = base[s] * n / total
-                    score[b] += p.w_co * w
-                    paths.setdefault(b, []).append(
-                        {"via": "co_used", "from": s, "w": round(n / total, 3)}
-                    )
-            for b in sib.get(s, ()):
-                score[b] += p.w_sib * base[s]
         if p.w_rej:
             cand = [a for a, _ in score.most_common(k * 3)]
             for a, (u, r) in self.store.outcomes(cand).items():

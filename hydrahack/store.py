@@ -2,11 +2,9 @@
 
 `GraphStore` is the real store: HydraDB, with the catalog as (:Category)-[:HAS_TOOL]->(:Tool)
 -[:HAS_API]->(:Api) and experience as (:Task)-[:USED]->(:Api) and (:Task)-[:REJECTED]->(:Api).
-Co-usage is never stored as a counter: it is the number of Task paths Api<-USED-Task-USED->Api,
-counted by a 2-hop traversal at query time, so it grows the moment a run is written back.
 
-`MemoryStore` answers the same four questions from Python dicts. It exists for unit tests and for
-the "flat store" comparison in eval/, never for the live app.
+`MemoryStore` answers the same questions from Python dicts. It exists for unit tests and the
+parity check against HydraDB, never for the live app.
 """
 
 from __future__ import annotations
@@ -66,20 +64,6 @@ class MemoryStore:
 
     def task_tools(self, task_ids: Iterable[int]) -> dict[int, set[int]]:
         return {t: self.task_used[t] for t in task_ids if t in self.task_used}
-
-    def coused(self, api_ids: Iterable[int]) -> dict[int, Counter[int]]:
-        out: dict[int, Counter[int]] = {}
-        for s in api_ids:
-            c: Counter[int] = Counter()
-            for t in self.api_tasks.get(s, ()):
-                for b in self.task_used[t]:
-                    if b != s:
-                        c[b] += 1
-            out[s] = c
-        return out
-
-    def siblings(self, api_ids: Iterable[int]) -> dict[int, set[int]]:
-        return {s: self.by_tool[self.tool_of[s]] - {s} for s in api_ids if s in self.tool_of}
 
     def outcomes(self, api_ids: Iterable[int]) -> dict[int, tuple[int, int]]:
         return {a: (len(self.api_tasks.get(a, ())), self.rejected[a]) for a in api_ids}
@@ -183,36 +167,6 @@ class GraphStore:
         )
         for r in rows:
             out[r["t"] - TASK_BASE].add(r["a"])
-        return out
-
-    def coused(self, api_ids: Iterable[int]) -> dict[int, Counter[int]]:
-        ids = [api_node(a) for a in api_ids]
-        out: dict[int, Counter[int]] = defaultdict(Counter)
-        if not ids:
-            return out
-        rows = self.db.query(
-            "MATCH (s:Api)<-[:USED]-(t:Task)-[:USED]->(b:Api) WHERE s.id IN $ids "
-            "RETURN s.idx AS s, b.idx AS b, count(*) AS n",
-            {"ids": ids},
-        )
-        for r in rows:
-            if r["s"] != r["b"]:
-                out[r["s"]][r["b"]] += r["n"]
-        return out
-
-    def siblings(self, api_ids: Iterable[int]) -> dict[int, set[int]]:
-        ids = [api_node(a) for a in api_ids]
-        out: dict[int, set[int]] = defaultdict(set)
-        if not ids:
-            return out
-        rows = self.db.query(
-            "MATCH (s:Api)<-[:HAS_API]-(x:Tool)-[:HAS_API]->(b:Api) WHERE s.id IN $ids "
-            "RETURN s.idx AS s, b.idx AS b",
-            {"ids": ids},
-        )
-        for r in rows:
-            if r["s"] != r["b"]:
-                out[r["s"]].add(r["b"])
         return out
 
     def outcomes(self, api_ids: Iterable[int]) -> dict[int, tuple[int, int]]:
