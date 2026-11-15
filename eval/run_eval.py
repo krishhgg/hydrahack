@@ -15,12 +15,13 @@ import argparse
 import json
 import statistics
 import time
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
 from hydrahack.data import load
-from hydrahack.router import Params, Router
+from hydrahack.router import Params, Router, clauses
 from hydrahack.store import GraphStore, Run
 from hydrahack.text import BM25
 
@@ -51,6 +52,27 @@ def flat_memory(memory: dict[int, set[int]], index: BM25, baseline: list[int], t
     hits = index.search(text, 1)
     out = list(memory[hits[0][0]]) if hits else []
     return (out + [a for a in baseline if a not in out])[:K]
+
+
+def flat_knn(memory: dict[int, set[int]], index: BM25, api_index: BM25, p: Params, text: str):
+    """Budget-matched plain-store baseline: Waypoint's scoring, weights and candidate counts
+    (lex_top tools, task_top past runs for the task, clause_top past runs per sub-request) over a
+    key-value store of whole runs. It has no Clause-NEEDS links and no rejection counters."""
+    score: Counter[int] = Counter()
+    lex = api_index.search(text, p.lex_top)
+    top = lex[0][1] if lex else 1.0
+    for a, s in lex:
+        score[a] += p.w_lex * s / top
+    hits, ceiling = index.search_scaled(text, p.task_top)
+    for t, s in hits:
+        for a in memory[t]:
+            score[a] += p.w_exp * (s / ceiling) ** p.sim_power
+    for part in clauses(text):
+        hits, ceiling = index.search_scaled(part, p.clause_top)
+        for t, s in hits:
+            for a in memory[t]:
+                score[a] += p.w_needs * s / ceiling
+    return [a for a, _ in score.most_common(K)]
 
 
 def main() -> None:
@@ -115,16 +137,22 @@ def main() -> None:
         tops = {q: o[0] for q, o in zip(eval_ids, out, strict=True)}
         lat = sorted(o[1] for o in out)
         flat = {q: flat_memory(memory, mem_index, baseline[q], ds.queries[q]) for q in eval_ids}
+        knn = {
+            q: flat_knn(memory, mem_index, router.api_index, params, ds.queries[q])
+            for q in eval_ids
+        }
         point = {
             "runs": served,
             "waypoint": score(tops, gold, eval_ids),
             "bm25": score(baseline, gold, eval_ids),
             "flat_memory": score(flat, gold, eval_ids),
+            "flat_knn": score(knn, gold, eval_ids),
             "slices": {
                 name: {
                     "waypoint": score(tops, gold, ids),
                     "bm25": score(baseline, gold, ids),
                     "flat_memory": score(flat, gold, ids),
+                    "flat_knn": score(knn, gold, ids),
                 }
                 for name, ids in (("seen_toolset", seen), ("novel_toolset", novel))
             },
@@ -138,6 +166,7 @@ def main() -> None:
             f"runs={served:>6} waypoint C@5={point['waypoint']['completeness']:.3f} "
             f"bm25={point['bm25']['completeness']:.3f} "
             f"flat={point['flat_memory']['completeness']:.3f} "
+            f"knn={point['flat_knn']['completeness']:.3f} "
             f"p50={point['latency_ms']['p50']}ms t={time.time() - t0:.0f}s",
             flush=True,
         )
@@ -162,6 +191,7 @@ def main() -> None:
             "baseline": final["bm25"]["completeness"],
             "waypoint": final["waypoint"]["completeness"],
             "flat_memory": final["flat_memory"]["completeness"],
+            "flat_knn": final["flat_knn"]["completeness"],
             "recall5_baseline": final["bm25"]["recall"],
             "recall5_waypoint": final["waypoint"]["recall"],
             "tokens_per_task_waypoint": round(statistics.mean(loaded)),

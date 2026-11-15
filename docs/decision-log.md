@@ -54,3 +54,8 @@ Completeness@5 on 2,373 held-out tasks after 19,361 runs: BM25 0.267, flat memor
 
   Earlier checkpoints: 0.301 vs 0.312 at 250 runs (a small early dip), then ahead from 1,000 runs on. w_needs = 2 scored 0.735 overall and 0.484 novel, but did worse early, so we kept 1.0.
 - Test split (HydraDB): Completeness@5 0.703, against 0.673 before. Novel tool sets 0.415, against 0.329 before and 0.327 for flat memory.
+
+## 2026-11-15 22:40 Budget-matched baseline and MCP limits (Codex P1s on #11)
+
+- Codex flagged that the nearest-run cache gets a smaller retrieval budget than the clause-enhanced router. Added `flat_knn` to `eval/run_eval.py`: Waypoint's scoring, weights and candidate counts over whole past runs, with no NEEDS links and no rejection counters, using Waypoint's weights unchanged (not tuned for it). Test split: 0.699 against Waypoint's 0.703 overall, 0.785 vs 0.782 on seen tool sets, 0.384 vs 0.415 on novel tool sets. So most of the margin over the nearest-run cache is retrieval budget; the graph structure's own contribution is the novel-set and early-stream gap. The docs and pitch now say that.
+- Codex security review flagged unbounded `/mcp` batches on the event loop. `/mcp` now caps the body at 64 KB and a batch at 8 messages, and routes in the thread pool. No rate limiter in the app; that belongs at the edge with the other public endpoints.

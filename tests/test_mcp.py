@@ -52,3 +52,21 @@ def test_errors_and_notifications():
     assert call("nope")["error"]["code"] == -32601
     note = {"jsonrpc": "2.0", "method": "notifications/initialized"}
     assert handle(note, fake_find, fake_report) is None
+
+
+def test_endpoint_caps_body_and_batch():
+    from fastapi.testclient import TestClient
+
+    from hydrahack.api import MCP_MAX_BATCH, MCP_MAX_BYTES, app
+
+    client = TestClient(app)
+    big = client.post("/mcp", content=b" " * (MCP_MAX_BYTES + 1))
+    assert big.status_code == 413
+    ping = {"jsonrpc": "2.0", "id": 1, "method": "ping"}
+    batch = client.post("/mcp", json=[ping] * (MCP_MAX_BATCH + 1))
+    assert batch.status_code == 400
+    assert batch.json()["error"]["code"] == -32600
+    assert (
+        client.post("/mcp", json=[ping, ping]).json()
+        == [{"jsonrpc": "2.0", "id": 1, "result": {}}] * 2
+    )

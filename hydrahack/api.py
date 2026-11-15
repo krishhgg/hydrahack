@@ -20,6 +20,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from hydrahack import mcp
 from hydrahack.data import load
@@ -33,6 +34,8 @@ WEB = ROOT / "web"
 RESULTS = ROOT / "eval" / "results" / "waypoint-test.json"
 EXAMPLES = ROOT / "eval" / "results" / "examples.json"
 LIVE_TASK_BASE = 5_000_000
+MCP_MAX_BYTES = 64_000
+MCP_MAX_BATCH = 8
 log = logging.getLogger("waypoint")
 
 
@@ -321,20 +324,28 @@ def _find_tools(task: str, k: int) -> dict:
 
 @app.post("/mcp")
 async def mcp_endpoint(request: Request) -> Response:
-    """MCP over Streamable HTTP with plain JSON responses (no SSE stream)."""
+    """MCP over Streamable HTTP with plain JSON responses (no SSE stream). Bodies and batches are
+    capped, and the blocking routing work runs in the thread pool so /health stays responsive."""
+    raw = await request.body()
+    if len(raw) > MCP_MAX_BYTES:
+        return JSONResponse(mcp._error(None, -32600, "request too large"), status_code=413)
     try:
-        body = await request.json()
+        body = json.loads(raw)
     except ValueError:
         return JSONResponse(mcp._error(None, -32700, "parse error"), status_code=400)
     messages = body if isinstance(body, list) else [body]
+    if not messages or len(messages) > MCP_MAX_BATCH:
+        msg = f"batch must hold 1 to {MCP_MAX_BATCH} messages"
+        return JSONResponse(mcp._error(None, -32600, msg), status_code=400)
+
+    def learn(task: str, used: list[int], offered: list[int]) -> dict:
+        return _learn(task[:4000], used, offered)
+
+    def run() -> list[dict]:
+        return [r for r in (mcp.handle(m, _find_tools, learn) for m in messages) if r is not None]
+
     try:
-        replies = [
-            r
-            for r in (
-                mcp.handle(m, _find_tools, lambda t, u, o: _learn(t[:4000], u, o)) for m in messages
-            )
-            if r is not None
-        ]
+        replies = await run_in_threadpool(run)
     except HTTPException as exc:
         msg_id = messages[0].get("id") if isinstance(messages[0], dict) else None
         return JSONResponse(mcp._error(msg_id, -32603, str(exc.detail)))

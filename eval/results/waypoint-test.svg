@@ -38,6 +38,18 @@
 <circle cx="516.3" cy="180.4" r="3" fill="#60a5fa"/>
 <circle cx="610.0" cy="173.1" r="3" fill="#60a5fa"/>
 <text x="620" y="177.1" fill="#60a5fa" font-size="13" font-weight="600">0.603</text>
+<polyline points="70.0,277.2 77.0,287.4 83.9,271.3 97.9,250.4 125.8,232.9 181.6,206.2 293.1,175.1 404.7,161.9 516.3,152.8 610.0,143.4" fill="none" stroke="#f59e0b" stroke-width="3" stroke-dasharray="3 3" stroke-linejoin="round"/>
+<circle cx="70.0" cy="277.2" r="3" fill="#f59e0b"/>
+<circle cx="77.0" cy="287.4" r="3" fill="#f59e0b"/>
+<circle cx="83.9" cy="271.3" r="3" fill="#f59e0b"/>
+<circle cx="97.9" cy="250.4" r="3" fill="#f59e0b"/>
+<circle cx="125.8" cy="232.9" r="3" fill="#f59e0b"/>
+<circle cx="181.6" cy="206.2" r="3" fill="#f59e0b"/>
+<circle cx="293.1" cy="175.1" r="3" fill="#f59e0b"/>
+<circle cx="404.7" cy="161.9" r="3" fill="#f59e0b"/>
+<circle cx="516.3" cy="152.8" r="3" fill="#f59e0b"/>
+<circle cx="610.0" cy="143.4" r="3" fill="#f59e0b"/>
+<text x="620" y="147.4" fill="#f59e0b" font-size="13" font-weight="600">0.699</text>
 <polyline points="70.0,277.2 77.0,277.2 83.9,277.2 97.9,277.2 125.8,277.2 181.6,277.2 293.1,277.2 404.7,277.2 516.3,277.2 610.0,277.2" fill="none" stroke="#9ca3af" stroke-width="3" stroke-dasharray="2 4" stroke-linejoin="round"/>
 <circle cx="70.0" cy="277.2" r="3" fill="#9ca3af"/>
 <circle cx="77.0" cy="277.2" r="3" fill="#9ca3af"/>
@@ -52,5 +64,6 @@
 <text x="620" y="281.2" fill="#9ca3af" font-size="13" font-weight="600">0.267</text>
 <line x1="84" x2="110" y1="64" y2="64" stroke="#22c55e" stroke-width="3" stroke-dasharray=""/><text x="118" y="68" fill="#e5e7eb" font-size="12">Waypoint (learns in HydraDB)</text>
 <line x1="84" x2="110" y1="84" y2="84" stroke="#60a5fa" stroke-width="3" stroke-dasharray="6 4"/><text x="118" y="88" fill="#e5e7eb" font-size="12">Flat memory (copy nearest run)</text>
-<line x1="84" x2="110" y1="104" y2="104" stroke="#9ca3af" stroke-width="3" stroke-dasharray="2 4"/><text x="118" y="108" fill="#e5e7eb" font-size="12">Stateless BM25 tool search</text>
+<line x1="84" x2="110" y1="104" y2="104" stroke="#f59e0b" stroke-width="3" stroke-dasharray="3 3"/><text x="118" y="108" fill="#e5e7eb" font-size="12">Flat k-NN (same budget)</text>
+<line x1="84" x2="110" y1="124" y2="124" stroke="#9ca3af" stroke-width="3" stroke-dasharray="2 4"/><text x="118" y="128" fill="#e5e7eb" font-size="12">Stateless BM25 tool search</text>
 </svg>

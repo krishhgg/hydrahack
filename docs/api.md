@@ -51,3 +51,5 @@ Point any MCP client at `https://<host>/mcp`. The agent sees two tools, not 1,41
 ```
 
 The result's `structuredContent.tools` holds each tool's `id`, `name`, `server` (the RapidAPI tool), `description` and `inputSchema`, plus `tokens_loaded` and `tokens_catalog`. `report_run` takes `{"task", "used": [ids], "offered": [ids]}` and refuses held-out test tasks.
+
+Tested with the official MCP Python client (`mcp` package, `streamable_http_client`): initialize, `list_tools` and `call_tool("find_tools")` all work. A request body is capped at 64 KB and a JSON-RPC batch at 8 messages; larger ones get 413 or 400. Routing runs in the server's thread pool, so a slow request doesn't block `/health`.
