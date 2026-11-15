@@ -246,12 +246,15 @@ class HydraDB:
 
     def health(self, roundtrip: bool = True) -> dict[str, Any]:
         """Liveness (/healthz), readiness (/readyz) and, by default, a write/read/delete round
-        trip on a throwaway id pair. A listening port is not proof the store accepts writes."""
+        trip on a throwaway id pair. A listening port is not proof the store accepts writes, so
+        when the round trip is requested it must succeed (cleanup included) for "ok" to be true.
+        """
         result: dict[str, Any] = {"healthz": False, "readyz": False, "roundtrip": None}
         try:
             result["healthz"] = self._http.get(f"{self.url}/healthz").status_code == 200
             result["readyz"] = self._http.get(f"{self.admin_url}/readyz").status_code == 200
             if roundtrip and result["healthz"]:
+                result["roundtrip"] = False
                 src = random.randrange(900_000_000, 999_000_000)
                 dst = src + 1
                 try:
@@ -263,13 +266,16 @@ class HydraDB:
                         {"s": src},
                         consistency="strong",
                     )
-                    result["roundtrip"] = rows == [{"id": dst}]
+                    found = rows == [{"id": dst}]
                 finally:
                     self.delete_ids([src, dst])
+                result["roundtrip"] = found
         except (httpx.HTTPError, HydraDBError):
             pass
-        result["ok"] = (
-            result["healthz"] and result["readyz"] and result["roundtrip"] in (True, None)
+        result["ok"] = bool(
+            result["healthz"]
+            and result["readyz"]
+            and (result["roundtrip"] is True or not roundtrip)
         )
         return result
 
