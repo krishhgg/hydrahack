@@ -29,10 +29,11 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY . .
 RUN uv sync --locked --no-dev
 
-# Take the healthcheck from this checkout, not the pinned base, so fixes to it ship with the app.
+# Take the engine entrypoint and healthcheck from this checkout, not the pinned base, so fixes to it ship with the app.
 COPY infra/hydradb/healthcheck.sh /usr/local/bin/hydradb-healthcheck
+COPY infra/hydradb/entrypoint.sh /usr/local/bin/hydradb-entrypoint
 COPY infra/fly/entrypoint.sh /usr/local/bin/fly-entrypoint
-RUN chmod 0755 /usr/local/bin/fly-entrypoint /usr/local/bin/hydradb-healthcheck
+RUN chmod 0755 /usr/local/bin/fly-entrypoint /usr/local/bin/hydradb-healthcheck /usr/local/bin/hydradb-entrypoint
 
 # Both processes share the container, so the engine is reached over loopback.
 ENV APP_MODULE=hydrahack.api:app \
