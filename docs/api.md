@@ -7,7 +7,7 @@ One FastAPI service (`hydrahack.api:app`) serves the API and the UI. It reads `H
 | GET | `/health` | Readiness, HydraDB liveness and the number of learned tasks |
 | POST | `/api/route` | Route a task: Waypoint's top-k tools, the BM25 baseline's top-k, the similar past tasks, the subgraph used, tokens and latency. Read-only |
 | POST | `/api/feedback` | Write a finished run back into the graph: a new Task node, USED edges to the tools needed and REJECTED edges to tools offered but not needed |
-| GET | `/api/examples` | Eight held-out test tasks with their needed tools, for the demo |
+| GET | `/api/examples` | Eight held-out test tasks with their needed tools, for the demo (picked by `eval/examples.py`) |
 | GET | `/api/results` | The committed eval result (`eval/results/waypoint-test.json`) in the UI's shape |
 | GET | `/` | The single-page UI |
 | POST | `/mcp` | MCP server (Streamable HTTP, JSON responses) with two tools: `find_tools(task, k)` returns the schemas of the k tools a task needs, and `report_run(task, used, offered)` writes the outcome back |

@@ -1,68 +1,70 @@
 [
   {
-    "id": "3313",
-    "text": "Please provide suggestions for a weekend getaway in Brazil and show me trending images in Canada.",
+    "id": "15664",
+    "text": "I'm planning a road trip with my family and I need some comfortable clothes for the journey. Find me some casual outfits for men and women from Asos. Also, suggest some nearby places to explore along the way.",
     "gold": [
-      121,
-      530
+      309,
+      1193,
+      1194
     ]
   },
   {
-    "id": "5234",
-    "text": "Find the translation of the word 'hello' in different languages and provide suggestions for similar words in those languages.",
+    "id": "13726",
+    "text": "I'm organizing a music festival and I want to feature some popular Slovakian songs. Get me the chart information for the top 10 songs in Slovakia on May 7th, 2022. Additionally, provide me with the artist details for the songs.",
     "gold": [
-      451,
-      530
+      85,
+      509
     ]
   },
   {
-    "id": "22288",
-    "text": "Find me some love messages from the 'Messages' API. Also, retrieve the history of older messages using the 'PubNub Network' API.",
+    "id": "2547",
+    "text": "I'm a sports enthusiast and I want to stay updated with the latest odds and scores. Fetch the live scores and odds for upcoming games in football, basketball, and tennis. Also, provide me with the daily OHLCV data for the cryptocurrency market.",
     "gold": [
-      415,
-      421
+      301,
+      379
     ]
   },
   {
-    "id": "20284",
-    "text": "I need the exchange rate from GBP to CAD. Also, fetch a playlist from Deezer with the id '1234' and a math fact about the number 1729.",
+    "id": "9967",
+    "text": "I am planning a fun weekend with my friends and we want to stay up-to-date with the latest memes. Can you provide us with the top popular posts and trending memes from Reddit? Also, check if the username 'funnyguy' is available on 9gag and Medium.",
     "gold": [
-      46,
-      404,
-      506
+      135,
+      144,
+      145,
+      152
     ]
   },
   {
-    "id": "1891",
-    "text": "Search for information about famous historical figures like Albert Einstein and Leonardo da Vinci. Retrieve the trending images as well.",
+    "id": "11049",
+    "text": "I'm a basketball coach and I need to analyze the performance of my team. Fetch the statistics of all NBA players for the current season and provide me with a list of available joke categories from the Chuck Norris API to entertain the players during breaks.",
     "gold": [
-      120,
-      121,
-      529
+      44,
+      674
     ]
   },
   {
-    "id": "5447",
-    "text": "I want to impress my friends with some interesting facts. Can you provide me with a random trivia fact? Also, tell me a Chuck Norris joke.",
+    "id": "11052",
+    "text": "I'm interested in purchasing the AliExpress product with the ID 3256804150697616. Before making the purchase, I would like to know the product details, including the title, price, and image. Additionally, please provide me with the shipping information for this product.",
     "gold": [
-      43,
-      403
+      166,
+      1024
     ]
   },
   {
-    "id": "23501",
-    "text": "Can you check if the SMSAPI.com service is authorized and retrieve the image, video, and audio data sent by users with the given message ID?",
+    "id": "20256",
+    "text": "I'm planning a road trip with my friends and we want to listen to some good music along the way. Can you suggest a playlist of trending songs from Soundcloud? Also, provide us with a radio station that plays a mix of different genres to keep us entertained throughout the journey.",
     "gold": [
-      718,
-      719
+      88,
+      99
     ]
   },
   {
-    "id": "3244",
-    "text": "What is the carbon footprint of using a subway for a 1000 km journey? Additionally, can you provide me with the guidelines for medical treatments?",
+    "id": "2984",
+    "text": "I'm planning a surprise trip for my partner. Can you fetch a list of webcams with the property 'live'? Additionally, provide me with the geocoordinates for a specific address: 506 Fourth Avenue Unit 1, Asbury Prk, NJ. Finally, recommend some nearby places to visit during our trip.",
     "gold": [
-      393,
-      708
+      38,
+      234,
+      324
     ]
   }
 ]

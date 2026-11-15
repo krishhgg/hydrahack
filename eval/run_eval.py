@@ -206,15 +206,6 @@ def main() -> None:
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }
     RESULTS.mkdir(exist_ok=True)
-    if args.split == "test" and args.limit is None:
-        wins = [
-            q
-            for q in eval_ids
-            if gold[q] <= set(last_tops[q][:K]) and not gold[q] <= set(baseline[q][:K])
-        ]
-        wins.sort(key=lambda q: len(ds.queries[q]))
-        demo = [{"id": q, "text": ds.queries[q], "gold": sorted(gold[q])} for q in wins[:8]]
-        (RESULTS / "examples.json").write_text(json.dumps(demo, indent=2) + "\n")
     out = Path(args.out) if args.out else RESULTS / f"waypoint-{args.split}.json"
     out.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result["headline"], indent=2))
