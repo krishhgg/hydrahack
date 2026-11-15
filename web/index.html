@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waypoint · tool routing that learns, on a HydraDB graph</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12L12 5.5L19.5 12M4.5 12L12 18.5L19.5 12"/><circle cx="4.5" cy="12" r="2.4"/><circle cx="12" cy="5.5" r="2"/><circle cx="12" cy="18.5" r="2"/><circle cx="19.5" cy="12" r="2.4" class="hot"/></svg>
+    <span class="name">Waypoint</span>
+    <span class="tagline">A tool router for agents that learns from every run. Its experience is a HydraDB graph.</span>
+  </div>
+  <div class="meta">
+    <span id="dataset" class="muted"></span>
+    <span id="learned" class="pill" title="(:Task) nodes with USED edges in HydraDB">– tasks learned</span>
+    <span id="health" class="health"><i></i><span>connecting</span></span>
+  </div>
+</header>
+<main class="grid">
+  <section class="panel" id="p-results">
+    <div class="ph"><span class="step">1</span><h2>It learns from every run. Stateless search stays flat.</h2></div>
+    <div id="hero" class="hero"></div>
+    <div id="curve-legend" class="legend">
+      <span><i class="sw wp"></i>Waypoint (graph)</span>
+      <span><i class="sw fm"></i>Flat memory</span>
+      <span><i class="sw bm"></i>BM25 tool search</span>
+    </div>
+    <div id="curve" class="chart"></div>
+    <div id="slices" class="slices"></div>
+    <div id="results-foot" class="foot"></div>
+  </section>
+
+  <section class="panel" id="p-route">
+    <div class="ph"><span class="step">2</span><h2>Route a task live</h2><span id="latency" class="lat"></span></div>
+    <form id="route-form" class="route-form" autocomplete="off">
+      <textarea id="task" rows="3" placeholder="Describe what the agent needs to do, then press Enter"></textarea>
+      <div class="examples-label">Held-out test tasks <span class="muted">· pick one to see which tools it truly needed</span></div>
+      <div id="examples" class="examples"></div>
+      <div class="actions">
+        <button type="submit" id="route-btn" class="btn primary">Route: load top 5 tools</button>
+        <span id="route-status" class="status"></span>
+      </div>
+    </form>
+    <div class="lists">
+      <div class="list wp">
+        <div class="lh"><i class="sw wp"></i><b>Waypoint</b><span class="muted">similar tasks → USED → APIs</span><span id="wp-score" class="score"></span></div>
+        <ol id="wp-list" class="tools"></ol>
+      </div>
+      <div class="list bm">
+        <div class="lh"><i class="sw bm"></i><b>BM25 tool search</b><span class="muted">stateless baseline</span><span id="bm-score" class="score"></span></div>
+        <ol id="bm-list" class="tools"></ol>
+      </div>
+    </div>
+    <div class="teach">
+      <button id="teach-btn" class="btn teach" type="button" disabled>Teach Waypoint: these were the tools I needed</button>
+      <span id="teach-status" class="status"></span>
+    </div>
+  </section>
+
+  <section class="panel" id="p-graph">
+    <div class="ph"><span class="step">3</span><h2>The subgraph this route traversed</h2></div>
+    <div class="glegend">
+      <span><i class="dot q"></i>query</span>
+      <span><i class="dot t"></i>past Task</span>
+      <span><i class="dot a sel"></i>Api loaded</span>
+      <span><i class="dot a"></i>Api not loaded</span>
+      <span class="muted">width = weight</span>
+    </div>
+    <div id="graph" class="graph"></div>
+    <div id="tokens" class="tokens"></div>
+  </section>
+</main>
+<div id="tip" class="tip" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
