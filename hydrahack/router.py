@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -22,6 +23,20 @@ class Params:
     w_sib: float = 0.0
     w_rej: float = 0.3
     sim_power: float = 1.0
+    w_clause: float = 1.0
+    clause_top: int = 3
+
+
+_CLAUSE = re.compile(
+    r"(?<=[.?!])\s+|\b(?:also|additionally|furthermore|moreover|and then)\b,?", re.IGNORECASE
+)
+
+
+def clauses(text: str) -> list[str]:
+    """Split a multi-part task into its sub-requests; each one becomes its own entry point into the
+    experience graph, so a task combining needs no single past run had can still be covered."""
+    parts = [p.strip() for p in _CLAUSE.split(text) if p and len(p.strip()) > 15]
+    return parts if len(parts) > 1 else []
 
 
 @dataclass
@@ -58,15 +73,23 @@ class Router:
         tasks: list[tuple[int, float]] = []
         if self.learn and len(self.task_index):
             hits, ceiling = self.task_index.search_scaled(text, p.task_top)
-            if hits:
-                tasks = [(t, (s / ceiling) ** p.sim_power) for t, s in hits]
-                used = self.store.task_tools([t for t, _ in tasks])
-                for t, sim in tasks:
-                    for a in used.get(t, ()):
-                        score[a] += p.w_exp * sim
-                        paths.setdefault(a, []).append(
-                            {"via": "task", "task": t, "w": round(sim, 3)}
-                        )
+            tasks = [(t, (s / ceiling) ** p.sim_power) for t, s in hits]
+            entries = [(t, sim, p.w_exp, "task", None) for t, sim in tasks]
+            if p.w_clause:
+                for i, part in enumerate(clauses(text)):
+                    c_hits, c_ceiling = self.task_index.search_scaled(part, p.clause_top)
+                    for t, s in c_hits:
+                        entries.append((t, s / c_ceiling, p.w_clause, "clause", i))
+                        if all(t != u for u, _ in tasks):
+                            tasks.append((t, s / c_ceiling))
+            used = self.store.task_tools({t for t, *_ in entries})
+            for t, sim, weight, via, clause in entries:
+                for a in used.get(t, ()):
+                    score[a] += weight * sim
+                    step = {"via": via, "task": t, "w": round(sim, 3)}
+                    if clause is not None:
+                        step["clause"] = clause
+                    paths.setdefault(a, []).append(step)
         if not self.learn:
             return self._finish(score, k, tasks, paths)
         seeds = [a for a, _ in score.most_common(p.seeds)]

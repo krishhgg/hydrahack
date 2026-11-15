@@ -16,11 +16,12 @@ import threading
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from hydrahack import mcp
 from hydrahack.data import load
 from hydrahack.router import Router
 from hydrahack.store import GraphStore, Run
@@ -197,22 +198,66 @@ def route(body: RouteIn) -> dict:
     }
 
 
-@app.post("/api/feedback")
-def feedback(body: FeedbackIn) -> dict:
+def _learn(task: str, used_ids: list[int], offered: list[int]) -> dict:
     s = _ready()
-    used = {a for a in body.used if a in s.apis}
+    used = {a for a in used_ids if a in s.apis}
     if not used:
         raise HTTPException(422, "used must name at least one known api idx")
-    rejected = {a for a in body.offered if a in s.apis} - used
+    rejected = {a for a in offered if a in s.apis} - used
     with s.lock:
         task_id = next(s.ids)
-    s.router.feedback([Run(task_id, body.task, used, rejected)])
-    s.texts[task_id] = body.task
+    s.router.feedback([Run(task_id, task, used, rejected)])
+    s.texts[task_id] = task
     return {
         "task_id": task_id,
         "edges_written": len(used) + len(rejected),
         "learned_tasks": len(s.router.task_index),
     }
+
+
+@app.post("/api/feedback")
+def feedback(body: FeedbackIn) -> dict:
+    return _learn(body.task, body.used, body.offered)
+
+
+def _find_tools(task: str, k: int) -> dict:
+    s = _ready()
+    r = s.router.route(task[:4000], k)
+    return {
+        "tools": [{**mcp.tool_schema(s.apis[a]), "score": round(r.scores[a], 3)} for a in r.tools],
+        "tokens_loaded": sum(s.tokens[a] for a in r.tools),
+        "tokens_catalog": s.catalog_tokens,
+        "learned_tasks": len(s.router.task_index),
+    }
+
+
+@app.post("/mcp")
+async def mcp_endpoint(request: Request) -> Response:
+    """MCP over Streamable HTTP with plain JSON responses (no SSE stream)."""
+    try:
+        body = await request.json()
+    except ValueError:
+        return JSONResponse(mcp._error(None, -32700, "parse error"), status_code=400)
+    messages = body if isinstance(body, list) else [body]
+    try:
+        replies = [
+            r
+            for r in (
+                mcp.handle(m, _find_tools, lambda t, u, o: _learn(t[:4000], u, o)) for m in messages
+            )
+            if r is not None
+        ]
+    except HTTPException as exc:
+        msg_id = messages[0].get("id") if isinstance(messages[0], dict) else None
+        return JSONResponse(mcp._error(msg_id, -32603, str(exc.detail)))
+    if not replies:
+        return Response(status_code=202)
+    return JSONResponse(replies if isinstance(body, list) else replies[0])
+
+
+@app.get("/mcp")
+def mcp_get() -> Response:
+    return Response(status_code=405, headers={"Allow": "POST"})
 
 
 @app.get("/api/examples")
