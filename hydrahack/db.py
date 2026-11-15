@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import random
+import uuid
 from collections.abc import Iterable, Iterator, Sequence
 from typing import Any
 
@@ -140,7 +141,15 @@ class HydraDB:
         bookmark: str | None = None,
     ) -> dict[str, Any]:
         """Run one query and return the raw first page (columns, rows, bookmark, next_cursor)."""
-        body: dict[str, Any] = {"query": cypher, "page_size": page_size}
+        # The engine uses query_id as the mutation idempotency key and numbers its own ids
+        # (http-query-N) from 1 on every start, so after an engine restart those collide with ids
+        # already in the WAL and every write fails ("idempotency identity was reused"). A unique
+        # id per request avoids that.
+        body: dict[str, Any] = {
+            "query": cypher,
+            "page_size": page_size,
+            "query_id": f"hh-{uuid.uuid4().hex}",
+        }
         if params:
             body["parameters"] = params
         if consistency:
