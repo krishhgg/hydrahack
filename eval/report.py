@@ -29,6 +29,8 @@ def runs_to_reach(curve: list[dict], router: str, level: float, slice_: str | No
     def at(p: dict) -> float:
         return (p["slices"][slice_][router] if slice_ else p[router])["completeness"]
 
+    if at(curve[0]) >= level:
+        return curve[0]["runs"]
     for prev, cur in zip(curve, curve[1:], strict=False):
         if at(cur) >= level > at(prev):
             frac = (level - at(prev)) / (at(cur) - at(prev))
@@ -47,7 +49,7 @@ def efficiency(r: dict) -> list[str]:
     ]
     for name, slice_, levels in (
         ("All", None, (0.4, 0.5, 0.6)),
-        ("Tool set never seen in training", "novel_toolset", (0.2, 0.3, 0.4)),
+        ("Tool set never seen in training", "novel_toolset", (0.25, 0.3, 0.35, 0.4)),
     ):
         for level in levels:
             knn = runs_to_reach(r["curve"], "flat_knn", level, slice_)
