@@ -14,5 +14,24 @@ services:
       - hydradb-data:/data
     restart: unless-stopped
 
+  # The app sits behind a profile until the core thread's hydrahack.api exists:
+  #   docker compose --profile app up --build
+  app:
+    profiles: ["app"]
+    build: .
+    environment:
+      HYDRADB_URL: http://hydradb:8443
+      HYDRADB_ADMIN_URL: http://hydradb:9090
+      HYDRADB_TOKEN: ${HYDRADB_TOKEN:-local-development-token-32-bytes}
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      hydradb:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
 volumes:
   hydradb-data:

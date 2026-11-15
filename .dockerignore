@@ -1,7 +1,13 @@
 .git
+.github
 .env
+.env.*
 .hydradb
 .venv
 __pycache__
+*.pyc
 node_modules
 data
+.cache
+.pytest_cache
+.ruff_cache
