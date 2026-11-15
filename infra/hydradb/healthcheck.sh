@@ -15,7 +15,9 @@ http() { # host port request-line body [extra header]
   exec 3>&-
   printf '%s' "$resp"
 }
-q() { http 127.0.0.1 8443 POST /v1/graphs/default/query "{\"cell_id\":\"cell-0\",\"query\":\"$1\"}"; }
+# A unique query_id per request: the engine's own http-query-N counter restarts from 1 on every
+# start, and a reused id on a write fails with "idempotency identity was reused".
+q() { http 127.0.0.1 8443 POST /v1/graphs/default/query "{\"cell_id\":\"cell-0\",\"query_id\":\"hc-$(date +%s%N)-$RANDOM\",\"query\":\"$1\"}"; }
 
 http 127.0.0.1 9090 GET /readyz | head -n1 | grep -q ' 200'
 q "MERGE (a {id: $id})-[:HEALTHCHECK]->(b {id: $dst})" | grep -q '"columns"'

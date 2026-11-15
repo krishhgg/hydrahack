@@ -50,3 +50,12 @@ What we verified against the running engine (v0.4.0, the pinned image in `infra/
 | 3-hop variable-length read, 1 / 8 / 32 clients | 438 / 1419 / 1052 req/s; p50 2.1 / 5.2 / 25.8 ms |
 
 Writes are the bottleneck: every write waits for a WAL flush (default 10 ms) and they serialise. We set `GRAPH_WAL_FLUSH_INTERVAL_MS=2` in the wrapper image (still durable, flushes more often): relationship `SET` went to 123/s sequential (p50 8.5 ms) and 319/s with 8 or more clients. Consequences for the learning loop: **batch node and edge ingestion**, and treat per-edge weight updates as roughly 8 ms each, so update only the edges a feedback step actually touched. Reads are cheap, so the live query path should not write.
+
+## Restarts: two ways the store went read-only (both fixed)
+
+Found by the core thread after a machine sleep restarted the engine: reads worked, every write failed.
+
+1. **Query-id collisions.** The HTTP API uses the request's `query_id` as the mutation idempotency key, and when the client omits it the engine invents `http-query-N` from a counter that restarts at 1 on every start. After a restart the new ids collide with ids already in the WAL and each write fails with `idempotency identity was reused for a different request`. `HydraDB.execute` now sends a unique `query_id` on every request, and `infra/hydradb/healthcheck.sh` does the same. **Anything that talks to the HTTP API directly must send its own unique `query_id` on writes.** Bolt writes use a server-generated ULID and were not affected.
+2. **Stale writer lease after a hard kill.** A graceful stop releases the cell's writer lease. After SIGKILL, OOM or host failure the lease stays unreleased, and the engine cannot take over another holder's lease on a local-filesystem store (it needs a conditional put the local store lacks, `PutMode::Update not yet implemented`): writes fail with `cell cell-0 is not owned by this node` and then `internal query execution error`, permanently. One node owns the volume, so `infra/hydradb/entrypoint.sh` deletes `_writer_leases/*` files before starting the engine (the Fly image uses the same entrypoint).
+
+`tests/test_db_restart.py` (integration, runs in CI) writes, restarts the engine gracefully and with `docker compose kill`, then checks that writes succeed and earlier data survived. A store already poisoned by case 1 or 2 on an old image is fixed by `docker compose down -v` locally.
