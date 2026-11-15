@@ -1,23 +1,28 @@
 """Load test for the deployed app.
 
-  LOAD_HOST=https://<app domain> LOAD_QUERY_PATH=/api/query \
-  LOAD_QUERY_BODIES='[{"question": "..."}, ...]' load/run.sh
+  LOAD_HOST=https://<app domain> load/run.sh [users] [spawn-rate] [duration]
+
+Defaults to POST /api/route with the sample tasks in load/route_bodies.json (read-only: it never
+calls /api/feedback, which writes).
 
 Environment:
-  LOAD_QUERY_PATH    the query endpoint (POST JSON by default, GET when LOAD_QUERY_METHOD=GET)
-  LOAD_QUERY_BODIES  JSON list of request bodies (or query-param dicts for GET), picked at random
+  LOAD_QUERY_PATH    the query endpoint (default /api/route; GET when LOAD_QUERY_METHOD=GET)
+  LOAD_QUERY_BODIES  JSON list of request bodies, picked at random (default load/route_bodies.json)
   LOAD_HEALTH_PATH   cheap readiness endpoint mixed in at 1/10 weight (default /health)
 """
 
 import json
 import os
 import random
+from pathlib import Path
 
 from locust import HttpUser, between, task
 
-QUERY_PATH = os.environ.get("LOAD_QUERY_PATH", "/health")
+QUERY_PATH = os.environ.get("LOAD_QUERY_PATH", "/api/route")
 METHOD = os.environ.get("LOAD_QUERY_METHOD", "POST").upper()
-BODIES = json.loads(os.environ.get("LOAD_QUERY_BODIES", "[{}]"))
+BODIES = json.loads(
+    os.environ.get("LOAD_QUERY_BODIES") or (Path(__file__).parent / "route_bodies.json").read_text()
+)
 HEALTH_PATH = os.environ.get("LOAD_HEALTH_PATH", "/health")
 
 
