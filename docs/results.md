@@ -44,6 +44,17 @@ Slices at the end of the stream (Completeness@5):
 | Tool set seen in training | 1,865 | 27.8% | 67.8% | 78.5% | 78.2% |
 | Tool set never seen in training | 508 | 22.8% | 32.7% | 38.4% | 41.5% |
 
+Data efficiency: training runs fed back before each router first reaches a Completeness@5 level (linear interpolation between the checkpoints above; Waypoint against the budget-matched flat k-NN):
+
+| Tasks | Level | Flat k-NN | Waypoint | Runs saved |
+|---|---|---|---|---|
+| All | 40.0% | 1,823 | 1,124 | 38% |
+| All | 50.0% | 4,160 | 3,342 | 20% |
+| All | 60.0% | 8,347 | 7,535 | 10% |
+| Tool set never seen in training | 20.0% | 2,787 | 1,458 | 48% |
+| Tool set never seen in training | 30.0% | 8,757 | 4,597 | 48% |
+| Tool set never seen in training | 40.0% | not within 19,361 | 17,177 | n/a |
+
 Context cost: Waypoint loads 714 tool-schema tokens per task on average, against 200,953 for the whole catalog (281x fewer).
 
 Route latency during the eval, 8 concurrent clients against one HydraDB node: p50 68.9 ms, p95 103.2 ms.
@@ -57,6 +68,8 @@ Route latency during the eval, 8 concurrent clients against one HydraDB node: p5
 - Waypoint more than doubles stateless tool search, and the curve rises with every batch of runs. It isn't a one-off number: the table above has ten checkpoints, all measured on the same untouched held-out tasks.
 - Waypoint beats the nearest-run cache at every checkpoint. Most of that gap is retrieval budget, not graph structure: the budget-matched flat k-NN gets 69.9% against Waypoint's 70.3% at the end of the stream, and on tool sets seen in training it is level (78.5% vs 78.2%).
 - What the graph structure adds is measured by Waypoint against flat k-NN, and it shows up where it should: on tasks whose exact tool set never appeared in training, 41.5% against 38.4%, and early in the stream (52.5% vs 49.6% after 4,000 runs). A whole past run carries tools the new task doesn't need, while a `Clause -NEEDS-> Api` edge carries only the tools that sub-request used, so Waypoint can assemble a new set from parts of different runs. The gain is real but modest, and we report it at that size.
+- The structure pays off most in data efficiency, which is what a new deployment lives on: a team's private tool catalog starts with no runs. On tool sets never seen in training, Waypoint reaches 20% Completeness@5 after 1,458 runs and 30% after 4,597, where flat k-NN needs 2,787 and 8,757 (48% fewer runs). Flat k-NN doesn't reach 40% on that slice within 19,361 runs; Waypoint does at 17,177. Over all tasks the saving is 38% at the 40% level and shrinks to 10% at 60%. These come from interpolating between checkpoints, so read them as approximate.
+- One weakness the curve shows: with only a few hundred runs, both learned routers score below stateless BM25 on novel tool sets, because a handful of loosely matching past runs outvote the text match. Both pass BM25 on that slice between 2,000 and 4,000 runs, and Waypoint stays ahead of flat k-NN at every checkpoint along the way. The nearest-run cache, which votes with a single run, is ahead of both on novel tool sets through 2,000 runs; Waypoint leads it from 4,000 runs on.
 - What the comparison does and doesn't isolate: both flat baselines run on Python dicts, not in HydraDB. The same traversal run on Python dicts returns exactly what HydraDB returns (`tests/test_store_integration.py` asserts that parity), so the accuracy comes from how Waypoint learns from its experience graph, not from the database engine. HydraDB is where that graph lives and is traversed live: persistent, shared by every agent that routes through it, and about 25 ms per route from a single client (three traversals).
 - What we tried that didn't help: expanding through co-used tools (`Api <-USED- Task -USED-> Api`), a query-weighted version of the same, and expanding through sibling endpoints of the same Tool. All three lowered validation Completeness@5, so none of them ships (decision log). The rejection-weighted outcome counters change validation Completeness@5 by less than one point (0.682 with them off, 0.688 at 0.3, 0.689 at 0.6), so we keep them at 0.3. We don't claim a measurable gain from them. Regenerate these with `uv run python -m eval.run_eval --split val --limit 800 --w-rej 0` (or 0.3, 0.6).
 

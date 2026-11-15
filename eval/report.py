@@ -22,6 +22,45 @@ def pct(x: float) -> str:
     return f"{100 * x:.1f}%"
 
 
+def runs_to_reach(curve: list[dict], router: str, level: float, slice_: str | None) -> int | None:
+    """Runs fed back until a router first reaches a Completeness@5 level, linearly interpolated
+    between checkpoints; None if it never does within the stream."""
+
+    def at(p: dict) -> float:
+        return (p["slices"][slice_][router] if slice_ else p[router])["completeness"]
+
+    for prev, cur in zip(curve, curve[1:], strict=False):
+        if at(cur) >= level > at(prev):
+            frac = (level - at(prev)) / (at(cur) - at(prev))
+            return round(prev["runs"] + frac * (cur["runs"] - prev["runs"]))
+    return None
+
+
+def efficiency(r: dict) -> list[str]:
+    lines = [
+        "Data efficiency: training runs fed back before each router first reaches a Completeness@5 "
+        "level (linear interpolation between the checkpoints above; Waypoint against the "
+        "budget-matched flat k-NN):",
+        "",
+        "| Tasks | Level | Flat k-NN | Waypoint | Runs saved |",
+        "|---|---|---|---|---|",
+    ]
+    for name, slice_, levels in (
+        ("All", None, (0.4, 0.5, 0.6)),
+        ("Tool set never seen in training", "novel_toolset", (0.2, 0.3, 0.4)),
+    ):
+        for level in levels:
+            knn = runs_to_reach(r["curve"], "flat_knn", level, slice_)
+            way = runs_to_reach(r["curve"], "waypoint", level, slice_)
+
+            def fmt(n: int | None) -> str:
+                return f"{n:,}" if n is not None else f"not within {r['train_stream']:,}"
+
+            saved = f"{1 - way / knn:.0%}" if knn and way else "n/a"
+            lines.append(f"| {name} | {pct(level)} | {fmt(knn)} | {fmt(way)} | {saved} |")
+    return lines
+
+
 def block(r: dict) -> str:
     h = r["headline"]
     lines = [
@@ -69,6 +108,7 @@ def block(r: dict) -> str:
             f"| {names.get(key, key)} | {s['n']:,} | {pct(s['bm25'])} | "
             f"{pct(s['flat_memory'])} | {pct(s['flat_knn'])} | {pct(s['waypoint'])} |"
         )
+    lines += ["", *efficiency(r)]
     lines += [
         "",
         f"Context cost: Waypoint loads {h['tokens_per_task_waypoint']:,} tool-schema tokens per "

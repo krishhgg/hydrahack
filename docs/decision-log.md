@@ -59,3 +59,12 @@ Completeness@5 on 2,373 held-out tasks after 19,361 runs: BM25 0.267, flat memor
 
 - Codex flagged that the nearest-run cache gets a smaller retrieval budget than the clause-enhanced router. Added `flat_knn` to `eval/run_eval.py`: Waypoint's scoring, weights and candidate counts over whole past runs, with no NEEDS links and no rejection counters, using Waypoint's weights unchanged (not tuned for it). Test split: 0.699 against Waypoint's 0.703 overall, 0.785 vs 0.782 on seen tool sets, 0.384 vs 0.415 on novel tool sets. So most of the margin over the nearest-run cache is retrieval budget; the graph structure's own contribution is the novel-set and early-stream gap. The docs and pitch now say that.
 - Codex security review flagged unbounded `/mcp` batches on the event loop. `/mcp` now caps the body at 64 KB and a batch at 8 messages, and routes in the thread pool. No rate limiter in the app; that belongs at the edge with the other public endpoints.
+
+## 2026-11-15 22:45 Data efficiency, and three structure ideas that did not hold
+
+- Added a data-efficiency table to `eval/report.py`: runs each router needs to first reach a Completeness@5 level, interpolated from the committed curve. Waypoint needs 48% fewer runs than flat k-NN to reach 20% and 30% on novel tool sets, and 38% / 20% / 10% fewer at 40% / 50% / 60% overall. No new eval run; it reads `eval/results/waypoint-test.json`.
+- Tried on validation only (in-memory reference, first 1,000 validation tasks, 215 of them with novel tool sets, checkpoints 250 / 1,000 / 4,000 / 19,361 runs). Baseline router: all 0.299 / 0.393 / 0.541 / 0.736, novel 0.167 / 0.181 / 0.298 / 0.460.
+  - Part coverage: reserve a top-5 slot for each sub-request's strongest `NEEDS` tool (optionally adding that part's text match), then fill by score. Every setting was lower at the end of the stream (0.672 to 0.724 overall). Dropped.
+  - Api experience profiles: index each Api by the texts of the Clauses that `NEED` it (`Api <-NEEDS- Clause`) and match each sub-request against them. The best setting (weight 0.5, top 5) scored 0.739 / 0.498 at the end of the stream, but 0.286 / 0.135 at 250 runs and 0.394 / 0.177 at 1,000, so it hurts the early curve, and +0.038 on 215 novel tasks is about 8 tasks. Not shipped.
+  - Per-part normalization of clause votes, so each sub-request's best match counts 1: lower at every checkpoint. Dropped.
+- None reached test, so the test numbers are unchanged.
