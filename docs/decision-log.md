@@ -25,3 +25,14 @@ ToolBench G3 (COLT split), 600 test tasks, Python only: BM25 C@5 0.123; dense bg
 - Verified: COLT's `query_tool_tune.txt` is byte-identical to `query_tool_test.txt`. Decision: never read it; validation is a slice of train.
 - Accepted the reviewer's demand for matched baselines (BM25, dense, flat episodic memory) and seen/novel toolset slices; graph value is claimed only where it beats flat memory.
 - **Pick: A, Waypoint, Track 2.** B kept as the fallback if A's graph signal fails. C killed for the deadline and answer leakage.
+
+## 2026-11-15 21:25 Router design from validation
+
+- Co-use expansion (Api <-USED- Task -USED-> Api) and same-Tool sibling expansion both lowered validation Completeness@5 (0.684 with both off vs 0.626-0.680 with them on, 800 validation tasks, in-memory store). Both weights set to 0. The code paths stay for the ablation, and the co-use query is skipped when its weight is 0, because counting Task paths gets slow as the graph grows (600 ms at 19k Tasks).
+- Past-task similarity is BM25 divided by the query's score ceiling (an absolute 0..1 similarity), not divided by the top hit. Dividing by the top hit made the first few hundred runs hurt (0.276 to 0.221 at 250 runs); the absolute version rises monotonically. w_exp = 4 chosen on validation.
+- Outcome counters (used, rejected) live as properties on Api nodes, folded in per feedback batch, because counting REJECTED edges per query grew with the number of Tasks. The edges stay as the record.
+- The text index (BM25) is in the app because HydraDB has no text index; it is rebuilt from Task nodes in the graph at startup.
+
+## 2026-11-15 21:40 First test-split run
+
+Completeness@5 on 2,373 held-out tasks after 19,361 runs: BM25 0.267, flat memory 0.603, Waypoint 0.673 (eval/results/waypoint-test.json). Rejection weight 0.3 chosen on validation (0.682 / 0.688 / 0.689 for 0 / 0.3 / 0.6: within noise, kept and reported as no measurable gain). Waypoint ties flat memory on novel tool sets (0.329 vs 0.327).

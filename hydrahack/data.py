@@ -24,7 +24,8 @@ SPLIT_SEED = 7
 
 _FIELD = re.compile(
     r"category_name:(?P<cat>.*?), tool_name:(?P<tool>.*?), api_name:(?P<api>.*?), "
-    r"api_description:(?P<desc>.*?), required_params:"
+    r"api_description:(?P<desc>.*?), required_params:",
+    re.DOTALL,
 )
 
 

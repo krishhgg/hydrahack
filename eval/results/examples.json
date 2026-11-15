@@ -1,0 +1,68 @@
+[
+  {
+    "id": "3313",
+    "text": "Please provide suggestions for a weekend getaway in Brazil and show me trending images in Canada.",
+    "gold": [
+      121,
+      530
+    ]
+  },
+  {
+    "id": "5234",
+    "text": "Find the translation of the word 'hello' in different languages and provide suggestions for similar words in those languages.",
+    "gold": [
+      451,
+      530
+    ]
+  },
+  {
+    "id": "22288",
+    "text": "Find me some love messages from the 'Messages' API. Also, retrieve the history of older messages using the 'PubNub Network' API.",
+    "gold": [
+      415,
+      421
+    ]
+  },
+  {
+    "id": "20284",
+    "text": "I need the exchange rate from GBP to CAD. Also, fetch a playlist from Deezer with the id '1234' and a math fact about the number 1729.",
+    "gold": [
+      46,
+      404,
+      506
+    ]
+  },
+  {
+    "id": "1891",
+    "text": "Search for information about famous historical figures like Albert Einstein and Leonardo da Vinci. Retrieve the trending images as well.",
+    "gold": [
+      120,
+      121,
+      529
+    ]
+  },
+  {
+    "id": "5447",
+    "text": "I want to impress my friends with some interesting facts. Can you provide me with a random trivia fact? Also, tell me a Chuck Norris joke.",
+    "gold": [
+      43,
+      403
+    ]
+  },
+  {
+    "id": "23501",
+    "text": "Can you check if the SMSAPI.com service is authorized and retrieve the image, video, and audio data sent by users with the given message ID?",
+    "gold": [
+      718,
+      719
+    ]
+  },
+  {
+    "id": "11691",
+    "text": "I need to find a pharmacy in Sydney. Can you provide the nearest one along with its address? Also, fetch the current time and date for Sydney.",
+    "gold": [
+      234,
+      264
+    ]
+  }
+]

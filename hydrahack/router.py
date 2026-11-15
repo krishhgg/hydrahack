@@ -71,8 +71,8 @@ class Router:
             return self._finish(score, k, tasks, paths)
         seeds = [a for a, _ in score.most_common(p.seeds)]
         base = dict(score)
-        co = self.store.coused(seeds)
-        sib = self.store.siblings(seeds)
+        co = self.store.coused(seeds) if p.w_co else {}
+        sib = self.store.siblings(seeds) if p.w_sib else {}
         for s in seeds:
             c = co.get(s)
             if c:

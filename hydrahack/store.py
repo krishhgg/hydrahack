@@ -122,8 +122,6 @@ class GraphStore:
                     "tool": a.tool,
                     "category": a.category,
                     "description": a.description[:400],
-                    "used": 0,
-                    "rejected": 0,
                 }
                 for a in apis
             ],

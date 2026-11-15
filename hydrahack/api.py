@@ -28,6 +28,7 @@ from hydrahack.store import GraphStore, Run
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
 RESULTS = ROOT / "eval" / "results" / "waypoint-test.json"
+EXAMPLES = ROOT / "eval" / "results" / "examples.json"
 LIVE_TASK_BASE = 5_000_000
 log = logging.getLogger("waypoint")
 
@@ -81,8 +82,7 @@ class State:
             enc = tiktoken.get_encoding("o200k_base")
             self.tokens = {a.idx: len(enc.encode(a.text)) for a in self.ds.apis}
             self.catalog_tokens = sum(self.tokens.values())
-            if self.graph.catalog_size() != len(self.ds.apis):
-                self.graph.load_catalog(self.ds.apis)
+            self.graph.load_catalog(self.ds.apis)
             past = self.graph.runs()
             if not past:
                 runs = [
@@ -217,7 +217,11 @@ def feedback(body: FeedbackIn) -> dict:
 
 @app.get("/api/examples")
 def examples() -> list[dict]:
+    """Held-out tasks for the demo. eval/run_eval.py picks the shortest ones Waypoint completes
+    and BM25 does not; they are showcase picks, the headline numbers cover every test task."""
     s = _ready()
+    if EXAMPLES.exists():
+        return json.loads(EXAMPLES.read_text())
     picks = [q for q in sorted(s.ds.test, key=int) if len(s.ds.test[q]) >= 2][:8]
     return [{"id": q, "text": s.ds.queries[q], "gold": sorted(s.ds.test[q])} for q in picks]
 
