@@ -142,55 +142,69 @@
     const hd = r.headline || {};
     const last = sortedCurve().at(-1) || {};
     const k = isNum(r.k) ? r.k : K;
-    const metric = hd.metric || "Completeness@" + k;
     const wp = frac(hd.waypoint ?? last.waypoint);
     const bm = frac(hd.baseline ?? last.bm25);
     const fm = frac(hd.flat_memory ?? last.flat_memory);
     const kn = frac(hd.flat_knn ?? last.flat_knn);
 
-    $("#dataset").textContent = [r.dataset, isNum(r.test_tasks) && fmt(r.test_tasks) + " held-out tasks"].filter(Boolean).join(" · ");
+    $("#dataset").textContent = isNum(r.test_tasks) ? fmt(r.test_tasks) + " held-out ToolBench tasks" : "";
+    if (isNum(r.catalog_apis)) $("#h-cat").textContent = fmt(r.catalog_apis);
+    $("#h-k").textContent = String(k);
 
-    const hero = $("#hero");
-    hero.replaceChildren(
-      el("div", { class: "big wp" }, el("div", { class: "v", text: pct(wp) }), el("div", { class: "l", text: "Waypoint" })),
-      el("div", { class: "big bm" }, el("div", { class: "v", text: pct(bm) }), el("div", { class: "l", text: "BM25 tool search" })),
-      wp != null && bm != null && el("div", { class: "big delta" },
-        el("div", { class: "v" }, (wp >= bm ? "+" : "") + ((wp - bm) * 100).toFixed(1), el("small", { text: "pts" })),
-        el("div", { class: "l", text: bm > 0 ? (wp / bm).toFixed(1) + "× the baseline" : "over baseline" })),
-    );
-
-    const sub = el("div", { class: "hero-sub", text: metric + " = share of " + (isNum(r.test_tasks) ? fmt(r.test_tasks) + " " : "") + "held-out tasks where every tool the task needed is among the " + k + " loaded into context." });
-    const kpis = [];
-    if (fm != null) kpis.push(el("div", { class: "kpi" }, el("div", { class: "k", text: "Flat memory" }), el("div", { class: "v" }, el("span", { class: "fm", text: pct(fm) }))));
-    if (kn != null) kpis.push(el("div", { class: "kpi", title: "Plain store with Waypoint's weights and candidate budget, voting over whole past runs" }, el("div", { class: "k", text: "Flat k-NN" }), el("div", { class: "v" }, el("span", { class: "kn", text: pct(kn) }))));
-    if (isNum(hd.recall5_baseline) || isNum(hd.recall5_waypoint)) {
-      kpis.push(el("div", { class: "kpi" }, el("div", { class: "k", text: "Recall@" + k }),
-        el("div", { class: "v" }, el("span", { class: "from", text: pct(hd.recall5_baseline) }), " → ", el("span", { class: "to", text: pct(hd.recall5_waypoint) }))));
+    const catTok = hd.tokens_catalog;
+    const wpTok = hd.tokens_per_task_waypoint;
+    const funnel = $("#funnel");
+    if (isNum(catTok) && isNum(wpTok) && wpTok > 0) {
+      const share = Math.max(0.35, (wpTok / catTok) * 100);
+      funnel.replaceChildren(
+        el("div", { class: "f-row cat" },
+          el("span", { class: "f-l" }, el("b", { text: fmt(catTok) }), " tool-schema tokens", isNum(r.catalog_apis) ? " · all " + fmt(r.catalog_apis) + " tools" : " · the whole catalog"),
+          el("span", { class: "f-bar" }, el("span", { class: "f-fill", style: "width:100%" }))),
+        el("div", { class: "f-row wp" },
+          el("span", { class: "f-l" }, el("b", { text: fmt(wpTok) }), " tokens · Waypoint's " + k + " tools per task"),
+          el("span", { class: "f-bar" }, el("span", { class: "f-fill", style: "width:" + share.toFixed(2) + "%" })),
+          el("span", { class: "f-x", text: Math.round(catTok / wpTok) + "× fewer" })));
+    } else {
+      funnel.replaceChildren();
     }
-    hero.after(sub);
-    document.querySelectorAll("#p-results .hero-sub").forEach((n) => n !== sub && n.remove());
-    document.querySelectorAll("#p-results .kpis").forEach((n) => n.remove());
-    if (kpis.length) sub.after(el("div", { class: "kpis", style: "grid-template-columns: repeat(" + kpis.length + ", minmax(0, 1fr))" }, kpis));
+
+    const rows = [
+      ["wp", "Waypoint", "experience graph in HydraDB", wp],
+      ["kn", "Flat k-NN", "plain store, same budget", kn],
+      ["fm", "Flat memory", "copy the nearest past run", fm],
+      ["bm", "BM25 tool search", "stateless, today's default", bm],
+    ].filter((x) => x[3] != null);
+    $("#hero").replaceChildren(...rows.map(([cls, name, sub, v]) => el("div", { class: "rk " + cls },
+      el("span", { class: "rk-n" }, el("b", { text: name }), el("small", { text: sub })),
+      el("span", { class: "rk-t" }, el("span", { class: "rk-f", style: "width:" + (v * 100).toFixed(1) + "%" })),
+      el("span", { class: "rk-v", text: pct(v) }))));
+
+    const nov = r.slices && r.slices.novel_toolset;
+    const foot = [];
+    if (wp != null && bm != null && bm > 0) foot.push(el("span", { class: "bf ok" }, el("b", { text: (wp / bm).toFixed(1) + "×" }), " stateless search"));
+    if (nov && frac(nov.waypoint) != null && frac(nov.flat_knn) != null) {
+      foot.push(el("span", { class: "bf", title: "Test tasks whose tool combination never appeared in training" + (isNum(nov.n) ? " (n = " + fmt(nov.n) + ")" : "") },
+        "Never-seen tool combinations: ", el("b", { class: "wpc", text: pct(nov.waypoint) }), " vs ", el("b", { text: pct(nov.flat_knn) }), " plain store"));
+    }
+    if (isNum(hd.recall5_waypoint) && isNum(hd.recall5_baseline)) foot.push(el("span", { class: "bf" }, "Recall@" + k + " ", el("b", { text: pct(hd.recall5_baseline) }), " → ", el("b", { class: "wpc", text: pct(hd.recall5_waypoint) })));
+    $("#board-foot").replaceChildren(...foot);
 
     const slices = r.slices && typeof r.slices === "object" ? Object.entries(r.slices).filter(([, s]) => s && typeof s === "object") : [];
-    const sliceHint = {
-      seen_toolset: "Test tasks whose tool combination appeared in the experience graph",
-      novel_toolset: "Test tasks whose tool combination never appeared in the experience graph",
-    };
+    const sliceName = { seen_toolset: "Tool sets seen in training", novel_toolset: "Never-seen tool sets" };
     $("#slices").replaceChildren(...slices.map(([key, s]) => {
-      const name = key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+      const name = sliceName[key] || key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
       const bar = (cls, label, v) => frac(v) == null ? null : el("div", { class: "bar " + cls },
         el("span", { class: "bl", text: label }),
         el("span", { class: "tr" }, el("span", { class: "fl", style: "display:block;width:" + (frac(v) * 100).toFixed(1) + "%" })),
         el("span", { class: "bv", text: pct(v) }));
-      return el("div", { class: "slice", title: sliceHint[key] || "" },
+      return el("div", { class: "slice" },
         el("div", { class: "sh" }, el("b", { text: name }), isNum(s.n) && el("span", { text: "n = " + fmt(s.n) })),
         bar("wp", "Waypoint", s.waypoint), bar("kn", "Flat k-NN", s.flat_knn), bar("fm", "Flat memory", s.flat_memory), bar("bm", "BM25", s.bm25));
     }));
     $("#slices").hidden = !slices.length;
 
     const gen = r.generated_at ? new Date(r.generated_at) : null;
-    $("#results-foot").textContent = "From the committed eval run" + (gen && !isNaN(gen) ? " · generated " + gen.toISOString().replace("T", " ").slice(0, 16) + " UTC" : "") + (MOCK ? " · MOCK DATA" : "");
+    $("#results-foot").textContent = "From the committed eval run" + (r.dataset ? " · " + r.dataset : "") + (gen && !isNaN(gen) ? " · generated " + gen.toISOString().replace("T", " ").slice(0, 16) + " UTC" : "") + (MOCK ? " · MOCK DATA" : "");
   }
 
   function renderCurve() {
@@ -296,12 +310,21 @@
     }, el("b", { text: "#" + ex.id }), " ", ex.text)));
   }
 
-  function pickExample(ex) {
+  function pickExample(ex, quiet) {
     if (state.busy) return;
     state.example = ex;
     $("#task").value = ex.text;
     renderExamples();
+    if (!quiet) reveal();
     route(ex.text);
+  }
+
+  function reveal() {
+    const w = $("#work");
+    const top = w.getBoundingClientRect().top;
+    if (Math.abs(top - 56) < 8) return;
+    const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: window.scrollY + top - 56, behavior: smooth ? "smooth" : "auto" });
   }
 
   const goldSet = () => {
@@ -1092,11 +1115,13 @@
   function bind() {
     $("#route-form").addEventListener("submit", (ev) => {
       ev.preventDefault();
+      reveal();
       route($("#task").value);
     });
     $("#task").addEventListener("keydown", (ev) => {
       if (ev.key === "Enter" && !ev.shiftKey) {
         ev.preventDefault();
+        reveal();
         route($("#task").value);
       }
     });
@@ -1107,6 +1132,12 @@
       }
     });
     $("#teach-btn").addEventListener("click", teach);
+    $(".cta").addEventListener("click", (ev) => {
+      ev.preventDefault();
+      reveal();
+      const lead = state.examples.find((e) => String(e.id) === "2547") || state.examples[0];
+      if (lead && !state.busy && state.example !== lead) pickExample(lead, true);
+    });
 
     let raf = 0;
     const rerender = () => {
@@ -1134,7 +1165,7 @@
     loadHealth();
     await Promise.all([loadResults(), loadExamples()]);
     const initial = state.examples[0];
-    if (initial && !state.route) pickExample(initial);
+    if (initial && !state.route) pickExample(initial, true);
   }
 
   boot();

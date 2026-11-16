@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Waypoint · tool routing that learns, on a HydraDB graph</title>
+<title>Waypoint · the 5 tools your agent needs, learned on a HydraDB graph</title>
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 <link rel="stylesheet" href="/static/styles.css">
 </head>
@@ -12,44 +12,55 @@
   <div class="brand">
     <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12L12 5.5L19.5 12M4.5 12L12 18.5L19.5 12"/><circle cx="4.5" cy="12" r="2.4"/><circle cx="12" cy="5.5" r="2"/><circle cx="12" cy="18.5" r="2"/><circle cx="19.5" cy="12" r="2.4" class="hot"/></svg>
     <span class="name">Waypoint</span>
-    <span class="tagline">A tool router for agents that learns from every run. Its experience is a HydraDB graph.</span>
+    <span class="tagline">Tool routing that learns · experience graph in HydraDB</span>
   </div>
+  <nav class="jump" aria-label="Sections">
+    <a href="#p-results">Result</a>
+    <a href="#work">Try it</a>
+    <a href="#p-learn">Learning curve</a>
+  </nav>
   <div class="meta">
-    <span id="dataset" class="muted"></span>
-    <span id="learned" class="pill" title="(:Task) nodes with USED edges in HydraDB">– tasks learned</span>
+    <span id="learned" class="pill" title="(:Task) nodes with USED edges in HydraDB" aria-live="polite">– tasks learned</span>
     <span id="health" class="health"><i></i><span>connecting</span></span>
   </div>
 </header>
-<main class="grid">
-  <section class="panel" id="p-results">
-    <div class="ph"><span class="step">1</span><h2>It learns from every run. Stateless search stays flat.</h2></div>
-    <div id="hero" class="hero"></div>
-    <div id="curve-legend" class="legend">
-      <span><i class="sw wp"></i>Waypoint (graph)</span>
-      <span><i class="sw kn"></i>Flat k-NN</span>
-      <span><i class="sw fm"></i>Flat memory</span>
-      <span><i class="sw bm"></i>BM25 tool search</span>
-    </div>
-    <div id="curve" class="chart"></div>
-    <div id="slices" class="slices"></div>
-    <div id="results-foot" class="foot"></div>
-  </section>
 
-  <section class="panel" id="p-route">
-    <div class="ph"><span class="step">2</span><h2>Route a task live</h2><span id="latency" class="lat"></span></div>
+<section class="hero" id="p-results" aria-labelledby="headline">
+  <div class="story">
+    <p class="eyebrow">Drop-in MCP endpoint for agents with big tool catalogs</p>
+    <h1 id="headline">Your agent has <em class="cat" id="h-cat">hundreds of</em> tools.<br>Each task needs <em class="k" id="h-k">5</em>.</h1>
+    <p class="lede">Waypoint loads only those, and learns which ones from every run: past runs live as a graph in HydraDB, and each new task walks it from similar tasks and sub-requests to the tools they used.</p>
+    <div id="funnel" class="funnel" aria-label="Tool-schema tokens in context"></div>
+    <a class="btn primary cta" href="#work">Route a held-out task live <span aria-hidden="true">↓</span></a>
+  </div>
+  <div class="board">
+    <div class="board-h">
+      <h2>Completeness@5</h2>
+      <span id="dataset" class="muted"></span>
+    </div>
+    <p class="board-sub">Share of held-out tasks where every tool the task needed is among the 5 loaded.</p>
+    <div id="hero" class="rank"></div>
+    <div id="board-foot" class="board-foot"></div>
+  </div>
+</section>
+
+<main class="work" id="work">
+  <section class="panel" id="p-route" aria-labelledby="route-h">
+    <div class="ph"><span class="step">1</span><h2 id="route-h">Route a task</h2><span id="latency" class="lat"></span></div>
     <form id="route-form" class="route-form" autocomplete="off">
+      <label for="task" class="sr">Task for the agent</label>
       <textarea id="task" rows="3" placeholder="Describe what the agent needs to do, then press Enter"></textarea>
       <div id="parts" class="parts" hidden></div>
-      <div class="examples-label">Held-out test tasks <span class="muted">· pick one to see which tools it truly needed</span></div>
+      <div class="examples-label">Held-out test tasks <span class="muted">· hand-picked illustrations, not the average case</span></div>
       <div id="examples" class="examples"></div>
       <div class="actions">
         <button type="submit" id="route-btn" class="btn primary">Route: load top 5 tools</button>
-        <span id="route-status" class="status"></span>
+        <span id="route-status" class="status" role="status" aria-live="polite"></span>
       </div>
     </form>
     <div class="lists">
       <div class="list wp">
-        <div class="lh"><i class="sw wp"></i><b>Waypoint</b><span class="muted">similar tasks → USED → APIs</span><span id="wp-score" class="score"></span></div>
+        <div class="lh"><i class="sw wp"></i><b>Waypoint</b><span class="muted">graph traversal</span><span id="wp-score" class="score"></span></div>
         <ol id="wp-list" class="tools"></ol>
       </div>
       <div class="list bm">
@@ -59,24 +70,41 @@
     </div>
     <div class="teach">
       <button id="teach-btn" class="btn teach" type="button" disabled>Teach Waypoint: these were the tools I needed</button>
-      <span id="teach-status" class="status"></span>
+      <span id="teach-status" class="status" role="status" aria-live="polite"></span>
     </div>
   </section>
 
-  <section class="panel" id="p-graph">
-    <div class="ph"><span class="step">3</span><h2>The subgraph this route traversed</h2></div>
+  <section class="panel" id="p-graph" aria-labelledby="graph-h">
+    <div class="ph"><span class="step">2</span><h2 id="graph-h">Why these 5: the subgraph this route walked in HydraDB</h2></div>
     <div class="glegend">
-      <span><i class="dot q"></i>query</span>
-      <span><i class="dot t"></i>past Task</span>
-      <span><i class="dot c"></i>Clause</span>
-      <span><i class="dot a sel"></i>Api loaded</span>
+      <span><i class="dot q"></i>your task</span>
+      <span><i class="dot t"></i>similar past Task</span>
+      <span><i class="dot c"></i>matching Clause (sub-request)</span>
+      <span><i class="dot a sel"></i>tool loaded</span>
       <span><i class="dot a"></i>not loaded</span>
-      <span class="muted">width = weight</span>
+      <span class="muted">line width = vote weight · hover a tool to trace it</span>
     </div>
     <div id="graph" class="graph"></div>
     <div id="tokens" class="tokens"></div>
   </section>
 </main>
+
+<section class="learn" id="p-learn" aria-labelledby="learn-h">
+  <div class="learn-text">
+    <span class="step">3</span>
+    <h2 id="learn-h">It gets better with every run. Stateless search stays flat.</h2>
+    <p class="muted">Completeness@5 on the held-out tasks as the router learns from more feedback runs. Test tasks are never fed back.</p>
+    <div id="curve-legend" class="legend">
+      <span><i class="sw wp"></i>Waypoint (graph)</span>
+      <span><i class="sw kn"></i>Flat k-NN (plain store)</span>
+      <span><i class="sw fm"></i>Flat memory</span>
+      <span><i class="sw bm"></i>BM25 tool search</span>
+    </div>
+    <div id="slices" class="slices"></div>
+    <div id="results-foot" class="foot"></div>
+  </div>
+  <div id="curve" class="chart"></div>
+</section>
 <div id="tip" class="tip" hidden></div>
 <script src="/static/app.js"></script>
 </body>
