@@ -23,14 +23,14 @@ class H(http.server.BaseHTTPRequestHandler):
     def _r(self):
         if self.path == "/__diag":
             try:
-                body = open("/tmp/diag.txt", "rb").read()
+                text = open("/tmp/diag.txt", "rb").read()
             except OSError:
-                body = b"no diag yet"
+                text = b"no diag yet"
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
-            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Content-Length", str(len(text)))
             self.end_headers()
-            self.wfile.write(body)
+            self.wfile.write(text)
             return
         self.send_response(200 if self.path == "/health" else 503)
         self.send_header("Content-Type", "application/json")
@@ -68,6 +68,7 @@ db=$!
     sleep 10
   done
 ) &
+diag_worker=$!
 
 # Engine state for the platform log while it opens its store (Render shows nothing else after the
 # first lines, so a hang there is otherwise invisible).
@@ -102,7 +103,7 @@ while [ "$SECONDS" -lt 1200 ]; do
 done
 [ "$ready" = 1 ] || { echo "hydradb did not become healthy in 1200s" >&2; diag; exit 1; }
 echo "hydradb healthy"
-kill "$warm" 2>/dev/null || true
+kill "$warm" "$diag_worker" 2>/dev/null || true
 wait "$warm" 2>/dev/null || true
 
 cd /app
