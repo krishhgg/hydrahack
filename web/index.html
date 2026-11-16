@@ -58,19 +58,22 @@
         <span id="route-status" class="status" role="status" aria-live="polite"></span>
       </div>
     </form>
+    <div id="kn-box" class="verdict" hidden></div>
     <div class="lists">
       <div class="list wp">
         <div class="lh"><i class="sw wp"></i><b>Waypoint</b><span class="muted">graph traversal</span><span id="wp-score" class="score"></span></div>
         <ol id="wp-list" class="tools"></ol>
+        <div id="lesson-fx" class="lesson-fx" hidden></div>
       </div>
       <div class="list bm">
         <div class="lh"><i class="sw bm"></i><b>BM25 tool search</b><span class="muted">stateless baseline</span><span id="bm-score" class="score"></span></div>
         <ol id="bm-list" class="tools"></ol>
+        <div id="bm-sum" class="bm-sum"></div>
       </div>
     </div>
     <div class="teach">
       <button id="teach-btn" class="btn teach" type="button" disabled>Teach Waypoint: these were the tools I needed</button>
-      <p id="teach-note" class="teach-note" hidden><span aria-hidden="true">🔒</span> Teach is off for held-out test tasks, so eval labels never reach the graph. Edit the text or type your own task to teach.</p>
+      <p id="teach-note" class="teach-note" hidden><span aria-hidden="true">🔒</span> Teach is off for held-out test tasks, so eval labels never reach the graph. Edit the text to teach.</p>
       <div id="teach-status" class="status" role="status" aria-live="polite"></div>
     </div>
   </section>
@@ -83,7 +86,7 @@
       <span><i class="dot c"></i>matching Clause (sub-request)</span>
       <span><i class="dot a sel"></i>tool loaded</span>
       <span><i class="dot a"></i>not loaded</span>
-      <span class="muted">line width = vote weight · hover a tool to trace it</span>
+      <span class="muted">bright line: each match’s clearest vote · hover a tool for every path</span>
     </div>
     <div id="graph" class="graph"></div>
     <div id="tokens" class="tokens"></div>

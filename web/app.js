@@ -221,7 +221,27 @@
         el("div", { class: "sh" }, el("b", { text: name }), isNum(s.n) && el("span", { text: "n = " + fmt(s.n) })),
         bar("wp", "Waypoint", s.waypoint), bar("kn", "Flat k-NN", s.flat_knn), bar("fm", "Flat memory", s.flat_memory), bar("bm", "BM25", s.bm25));
     }));
-    $("#slices").hidden = !slices.length;
+    const cs = r.cold_start && r.cold_start.completeness;
+    const csNew = (key) => (cs && cs[key] ? cs[key].new_api : null);
+    if (cs && frac(csNew("waypoint")) != null) {
+      const bar = (cls, label, v) => frac(v) == null ? null : el("div", { class: "bar " + cls },
+        el("span", { class: "bl", text: label }),
+        el("span", { class: "tr" }, el("span", { class: "fl", style: "display:block;width:" + (frac(v) * 100).toFixed(1) + "%" })),
+        el("span", { class: "bv", text: pct(v) }));
+      const n = r.cold_start.tasks && r.cold_start.tasks.new_api;
+      const fam = cs.waypoint && cs.waypoint.familiar;
+      $("#slices").append(el("div", { class: "slice cold" },
+        el("div", { class: "sh" }, el("b", { text: "Brand-new endpoints" }), isNum(n) && el("span", { text: "n = " + fmt(n) })),
+        el("div", { class: "cold-sub", text: "Test tasks that need an endpoint no training run ever used" }),
+        bar("wp", "Waypoint", csNew("waypoint")),
+        bar("nt", "Waypoint, no Tool hop", csNew("waypoint_no_transfer")),
+        bar("kn", "Flat k-NN", csNew("flat_knn")),
+        bar("bm", "BM25", csNew("bm25")),
+        el("p", { class: "cold-cap" }, "A store of past runs has nothing to copy for a new endpoint. The graph reaches it through its Tool, ",
+          el("code", { text: "(:Api)←[:HAS_API]-(:Tool)-[:HAS_API]→(:Api)" }),
+          ", so Waypoint keeps its learned lead on familiar tools" + (frac(fam) != null ? " (" + pct(fam) + ")" : "") + " without losing new ones" + (frac(csNew("bm25")) != null ? "; stateless search does about as well on these (" + pct(csNew("bm25")) + ")." : "."))));
+    }
+    $("#slices").hidden = !$("#slices").children.length;
 
     const gen = r.generated_at ? new Date(r.generated_at) : null;
     $("#results-foot").textContent = "From the committed eval run" + (r.dataset ? " · " + r.dataset : "") + (gen && !isNaN(gen) ? " · generated " + gen.toISOString().replace("T", " ").slice(0, 16) + " UTC" : "") + (MOCK ? " · MOCK DATA" : "");
@@ -321,19 +341,35 @@
     renderExamples();
   }
 
+  function exGist(t) {
+    const ss = String(t).split(/(?<=[.!?])\s+/).filter(Boolean);
+    const lead = ss.length > 1 && /^(i['’]?m|i am|my|we|as a)\b/i.test(ss[0]) ? ss.slice(1).join(" ") : String(t);
+    return lead.replace(/^(also|and|can you|could you|please)[, ]+/i, "").replace(/^\w/, (c) => c.toUpperCase());
+  }
+
   function renderExamples() {
     $("#examples").replaceChildren(...state.examples.map((ex) => el("button", {
       type: "button",
       class: "chip" + (state.example === ex ? " on" : ""),
       title: ex.text,
       onclick: () => pickExample(ex),
-    }, el("b", { text: "#" + ex.id }), " ", ex.text)));
+    }, el("b", { text: "#" + ex.id }), " ", exGist(ex.text))));
+  }
+
+  function fitTask() {
+    const ta = $("#task");
+    ta.style.height = "auto";
+    const cs = getComputedStyle(ta);
+    const lh = parseFloat(cs.lineHeight) || 18;
+    const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+    ta.style.height = Math.min(ta.scrollHeight + 2, Math.round(lh * 4 + pad)) + "px";
   }
 
   function pickExample(ex, quiet) {
     if (state.busy) return;
     state.example = ex;
     $("#task").value = ex.text;
+    fitTask();
     renderExamples();
     if (!quiet) reveal();
     route(ex.text);
@@ -453,10 +489,44 @@
       : "";
     renderList("#wp-list", "#wp-score", r.tools, true);
     renderList("#bm-list", "#bm-score", r.baseline, false);
+    renderLessonFx();
+    syncBm();
+    renderPlainStore();
     renderParts();
     renderGraph();
     renderTokens();
     updateTeach();
+  }
+
+  function renderPlainStore() {
+    const box = $("#kn-box");
+    const ex = state.routedExample;
+    const gold = goldSet();
+    const r = state.route;
+    if (!ex || !gold || !gold.size || !r) {
+      box.hidden = true;
+      return;
+    }
+    const named = new Map([...(r.tools || []), ...(r.baseline || [])].filter(Boolean).map((t) => [t.idx, t.name]));
+    for (const n of ((r.graph || {}).nodes || [])) if (n && n.kind === "api" && !named.has(apiIdx(n))) named.set(apiIdx(n), n.label);
+    const name = (i) => named.get(i) || "API " + i;
+    const rows = [
+      ["wp", "Waypoint", "graph, live", (r.tools || []).slice(0, K).map((t) => t.idx)],
+      ["kn", "Plain store", "flat k-NN, same budget", Array.isArray(ex.flat_knn) ? ex.flat_knn.map(Number).slice(0, K) : null],
+      ["bm", "BM25", "stateless", (r.baseline || []).slice(0, K).map((t) => t.idx)],
+    ].filter((x) => x[3]);
+    box.replaceChildren(
+      el("div", { class: "vh", title: "Plain store ranking replayed offline by eval/examples.py on the same training runs", text: "Needed tools in each router's top " + K + " for this task" }),
+      ...rows.map(([cls, label, sub, picks]) => {
+        const missed = [...gold].filter((i) => !picks.includes(i));
+        const hit = gold.size - missed.length;
+        return el("div", { class: "vr " + cls + (missed.length ? " miss" : " ok") },
+          el("span", { class: "vn" }, el("i", { class: "sw " + cls }), el("b", { text: label }), el("small", { text: sub })),
+          el("span", { class: "vs2", text: hit + "/" + gold.size }),
+          el("span", { class: "vm" }, missed.length ? el("span", {}, "✕ missed ", el("b", { text: missed.map(name).join(", ") })) : el("span", { class: "okc", text: "✓ complete" })));
+      }),
+      );
+    box.hidden = false;
   }
 
   function renderParts() {
@@ -474,11 +544,11 @@
     ]));
   }
 
-  const VOTE_KINDS = ["task", "clause", "text"];
+  const VOTE_KINDS = ["task", "clause", "text", "tool"];
 
   function voteOf(t) {
     const v = t.vote && typeof t.vote === "object" ? t.vote : null;
-    const out = { text: 0, task: 0, clause: 0, rf: v && isNum(v.rejected_factor) ? v.rejected_factor : 1 };
+    const out = { text: 0, task: 0, clause: 0, tool: 0, rf: v && isNum(v.rejected_factor) ? v.rejected_factor : 1 };
     if (v && VOTE_KINDS.some((k) => isNum(v[k]))) {
       for (const k of VOTE_KINDS) out[k] = isNum(v[k]) ? Math.max(0, v[k]) : 0;
       return out;
@@ -500,13 +570,14 @@
     if (tasks) bits.push(el("span", { class: "v-task", text: tasks + " task" + (tasks === 1 ? "" : "s") }));
     if (clauses) bits.push(el("span", { class: "v-clause", text: clauses + " clause" + (clauses === 1 ? "" : "s") }));
     if (text) bits.push(el("span", { class: "v-text", text: "text" }));
+    if (paths.some((p) => p.via === "tool")) bits.push(el("span", { class: "v-tool", title: "No past run used this endpoint: Waypoint reached it through its Tool, (:Api)<-[:HAS_API]-(:Tool)-[:HAS_API]->(:Api), from an endpoint past runs did use", text: "new endpoint, via its Tool" }));
     return bits.flatMap((b, i) => (i ? [" + ", b] : [b]));
   }
 
   function voteBar(t, maxTotal) {
     const v = voteOf(t);
     const pctOf = (x) => (maxTotal > 0 ? ((x / maxTotal) * 100).toFixed(1) + "%" : "0%");
-    const title = "past tasks " + v.task.toFixed(2) + " + clauses " + v.clause.toFixed(2) + " + text " + v.text.toFixed(2)
+    const title = "past tasks " + v.task.toFixed(2) + " + clauses " + v.clause.toFixed(2) + " + text " + v.text.toFixed(2) + (v.tool > 0 ? " + via its Tool " + v.tool.toFixed(2) : "")
       + (v.rf < 1 ? " × rejected " + v.rf.toFixed(2) : "") + (isNum(t.score) ? " = " + t.score.toFixed(2) : "");
     return el("span", { class: "vote", title, role: "img", "aria-label": title },
       ...VOTE_KINDS.filter((k) => v[k] > 0).map((k) => el("span", { class: "vs v-" + k, style: "width:" + pctOf(v[k]) })));
@@ -521,7 +592,7 @@
     const prevRanks = prevTools ? new Map(prevTools.map((t, i) => [t.idx, i])) : null;
     if (!tools.length) host.append(el("li", { class: "empty", text: state.route ? "No tools returned." : "Pick an example or type a task." }));
 
-    const maxTotal = isWp ? Math.max(0, ...tools.map((t) => { const v = voteOf(t); return v.text + v.task + v.clause; })) : 0;
+    const maxTotal = isWp ? Math.max(0, ...tools.map((t) => { const v = voteOf(t); return v.text + v.task + v.clause + v.tool; })) : 0;
     tools.forEach((t, i) => {
       const needed = !!(gold && gold.has(t.idx));
       let change = null;
@@ -605,6 +676,85 @@
     return null;
   }
 
+  function lessonShare(t, clauseTask) {
+    let c = 0;
+    let task = null;
+    for (const p of Array.isArray(t.paths) ? t.paths : []) {
+      if (!p || !isNum(p.c)) continue;
+      const id = p.via === "task" ? p.task : p.via === "clause" ? clauseTask.get(String(p.clause)) : null;
+      if (!taughtTask(id)) continue;
+      c += Math.max(0, p.c);
+      task = Number(id);
+    }
+    const rf = t.vote && isNum(t.vote.rejected_factor) ? t.vote.rejected_factor : 1;
+    return { c: c * rf, task };
+  }
+
+  function syncBm() {
+    const box = document.querySelector(".list.bm");
+    const gold = goldSet();
+    const lesson = $("#teach-status").classList.contains("ok") || !$("#lesson-fx").hidden;
+    const fold = lesson && !(gold && gold.size);
+    box.classList.toggle("folded", fold);
+    const names = ((state.route || {}).baseline || []).slice(0, K).map((t) => t && t.name).filter(Boolean);
+    $("#bm-sum").textContent = fold && names.length ? "Loaded: " + names.join(" · ") : "";
+    $("#bm-sum").title = names.join(", ");
+  }
+
+  function renderLessonFx() {
+    const host = $("#lesson-fx");
+    host.replaceChildren();
+    host.hidden = true;
+    const r = state.route || {};
+    const tools = (r.tools || []).filter((t) => t && isNum(t.score)).slice(0, K);
+    if (!state.taught.size || !tools.length) return;
+    if ([...state.taught.values()].some((l) => String(l.text).trim() === String(state.routedTask).trim())) return;
+    const clauseTask = new Map((r.clauses || []).filter(Boolean).map((c) => [String(c.id), c.task]));
+    const share = new Map(tools.map((t) => [t.idx, lessonShare(t, clauseTask)]));
+    const helped = tools.filter((t) => share.get(t.idx).c > 0.005);
+    if (!helped.length) return;
+    const without = tools.map((t) => ({ idx: t.idx, s: t.score - share.get(t.idx).c })).sort((a, b) => b.s - a.s);
+    const rankWithout = new Map(without.map((x, i) => [x.idx, i + 1]));
+    const taughtTools = new Set([...state.taught.values()].flatMap((l) => l.tools || []));
+    const lessonId = share.get(helped[0].idx).task;
+    const rows = helped.map((t) => {
+      const i = tools.indexOf(t);
+      const sh = share.get(t.idx);
+      const b = rankWithout.get(t.idx);
+      const moved = b - (i + 1);
+      return el("div", { class: "fx-row" },
+        el("span", { class: "fx-n", title: t.name || "" }, t.name || "API " + t.idx, taughtTools.has(t.idx) ? el("i", { class: "fx-tick", title: "You marked this tool as needed", text: "✓ you ticked it" }) : null),
+        el("span", { class: "fx-b" }, "#" + b, el("small", { text: " " + (t.score - sh.c).toFixed(2) })),
+        el("span", { class: "fx-arrow", "aria-hidden": "true", text: "→" }),
+        el("span", { class: "fx-a" }, "#" + (i + 1), el("small", { text: " " + t.score.toFixed(2) })),
+        el("span", { class: "fx-d" + (moved > 0 ? " up" : ""), text: moved > 0 ? "▲" + moved : "+" + Math.round((sh.c / Math.max(0.01, t.score - sh.c)) * 100) + "% vote" }));
+    });
+    host.append(
+      el("div", { class: "fx-h" }, el("span", { class: "lesson-chip", text: "your lesson" }), el("b", { text: "at work on a new task" }),
+        el("span", { class: "muted", text: lessonId != null ? " · votes from Task " + lessonId + " you taught" : "" })),
+      el("div", { class: "fx-cols", "aria-hidden": "true" }, el("span", { text: "tool" }), el("span", { text: "without lesson" }), el("span", {}), el("span", { text: "with it" }), el("span", {})),
+      ...rows,
+      el("div", { class: "fx-foot", text: "“Without” re-ranks these " + tools.length + " tools after removing the votes that reach them through your lesson's Task and Clauses." }));
+    host.hidden = false;
+  }
+
+  function miniCurve() {
+    const pts = sortedCurve().filter((p) => isNum(p.waypoint));
+    if (pts.length < 2) return null;
+    const w = 132, h = 30;
+    const x0 = pts[0].runs, x1 = pts.at(-1).runs || 1;
+    const X = (v) => 2 + ((v - x0) / (x1 - x0 || 1)) * (w - 4);
+    const Y = (v) => h - 3 - Math.max(0, Math.min(1, frac(v))) * (h - 6);
+    const d = pts.map((p, i) => (i ? "L" : "M") + X(p.runs).toFixed(1) + "," + Y(p.waypoint).toFixed(1)).join("");
+    const lp = pts.at(-1);
+    const label = "Completeness@5 " + pct(pts[0].waypoint) + " at " + short(x0) + " runs → " + pct(lp.waypoint) + " at " + short(lp.runs);
+    return el("a", { class: "minicurve", href: "#p-learn", title: "Open the learning curve" },
+      svg("svg", { width: w, height: h, viewBox: "0 0 " + w + " " + h, role: "img", "aria-label": label },
+        svg("path", { d, class: "mc-line" }),
+        svg("circle", { cx: X(lp.runs), cy: Y(lp.waypoint), r: 3, class: "mc-end" })),
+      el("span", {}, el("b", { text: "Each lesson is one more feedback run." }), " " + label));
+  }
+
   async function teach() {
     if (state.busy || !state.route || !state.checked.size) return;
     const task = state.routedTask;
@@ -628,6 +778,7 @@
       }
       st.className = "status lesson ok";
       st.replaceChildren(...lessonCard(head, before, state.route, used));
+      syncBm();
       requestAnimationFrame(() => st.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
     } catch (e) {
       st.className = "status err";
@@ -660,7 +811,8 @@
       el("div", { class: "lh2" }, el("span", { class: "okdot", "aria-hidden": "true", text: "✓" }), head),
       el("div", { class: "lrows" }, rows),
       el("div", { class: "lfoot", text: "The lesson is now edges in the graph. Re-word the task, or try a related one: Waypoint reaches these tools through it (marked “your lesson”)." }),
-    ];
+      miniCurve(),
+    ].filter(Boolean);
   }
 
   /* ---------- frame 3: graph + tokens ---------- */
@@ -710,11 +862,33 @@
     const TASKS = 4;
     const PER_PART = 3;
     const tasksAll = nodes.filter((n) => n.kind === "task").sort((a, b) => (w0.get(b.id) ?? 0) - (w0.get(a.id) ?? 0));
-    const groups = [{ id: "w", label: multi ? "Whole task" : "Your task", sub: "similar past runs", kind: "task", items: tasksAll.slice(0, TASKS), more: Math.max(0, tasksAll.length - TASKS) }];
+    const dupOf = new Map();
+    const dupN = new Map();
+    const textKey = (n) => {
+      const t = n.kind === "task" ? (taskInfo.get(String(taskId(n))) || {}).text || n.text : (clauseInfo.get(String(n.id).replace(/^c/, "")) || {}).text || n.text;
+      return String(t || n.id).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    };
+    const fold = (list) => {
+      const rep = new Map();
+      const out = [];
+      for (const n of list) {
+        const k = textKey(n);
+        if (rep.has(k)) {
+          dupOf.set(n.id, rep.get(k));
+          dupN.set(rep.get(k), (dupN.get(rep.get(k)) || 1) + 1);
+          continue;
+        }
+        rep.set(k, n.id);
+        out.push(n);
+      }
+      return out;
+    };
+    const tasksU = fold(tasksAll);
+    const groups = [{ id: "w", label: multi ? "Whole task" : "Your task", sub: "similar past runs", kind: "task", items: tasksU.slice(0, TASKS), more: Math.max(0, tasksU.length - TASKS) }];
     const clausesAll = nodes.filter((n) => n.kind === "clause");
     const nGroups = multi ? parts.length : 1;
     for (let i = 0; i < nGroups; i++) {
-      const cs = clausesAll.filter((n) => (multi ? partOf(n) === i : true)).sort((a, b) => (w0.get(b.id) ?? 0) - (w0.get(a.id) ?? 0));
+      const cs = fold(clausesAll.filter((n) => (multi ? partOf(n) === i : true)).sort((a, b) => (w0.get(b.id) ?? 0) - (w0.get(a.id) ?? 0)));
       if (!cs.length && multi) {
         groups.push({ id: "p" + i, label: "Part " + (i + 1), text: parts[i], kind: "clause", items: [], more: 0, part: i });
         continue;
@@ -722,7 +896,9 @@
       if (!cs.length) continue;
       groups.push({ id: "p" + i, label: multi ? "Part " + (i + 1) : "Sub-requests", text: multi ? parts[i] : "", kind: "clause", items: cs.slice(0, PER_PART), more: Math.max(0, cs.length - PER_PART), part: multi ? i : null });
     }
-    const shown = new Set(groups.flatMap((gr) => gr.items.map((n) => n.id)));
+    const shownRep = new Set(groups.flatMap((gr) => gr.items.map((n) => n.id)));
+    for (const [d, rp] of [...dupOf]) if (!shownRep.has(rp)) dupOf.delete(d);
+    const shown = new Set([...shownRep, ...dupOf.keys()]);
 
     const rankWp = new Map((r.tools || []).map((t, i) => [t.idx, i]));
     const rankBm = new Map((r.baseline || []).map((t, i) => [t.idx, i]));
@@ -731,6 +907,22 @@
     const support = (n) => edges.filter((e) => e.target === n.id && shown.has(e.source)).reduce((s, e) => s + (isNum(e.w) ? e.w : 0), 0);
     const others = apis.filter((n) => !loaded.includes(n)).sort((a, b) => support(b) - support(a)).slice(0, 4);
     const apiCol = [...loaded, ...others];
+
+    const apiRank = new Map(apiCol.map((n, i) => [n.id, i]));
+    const bary = new Map();
+    for (const gr of groups) for (const it of gr.items) {
+      let sw = 0, sy = 0;
+      for (const e of edges) {
+        if (e.source !== it.id || !apiRank.has(e.target)) continue;
+        const ty = String(e.type).toLowerCase();
+        if (ty !== "used" && ty !== "needs") continue;
+        const w = isNum(e.w) ? Math.abs(e.w) + 0.01 : 0.3;
+        sw += w;
+        sy += w * apiRank.get(e.target);
+      }
+      bary.set(it.id, sw ? sy / sw : apiCol.length);
+    }
+    for (const gr of groups) gr.items.sort((a, b) => bary.get(a.id) - bary.get(b.id));
 
     const pad = { t: 30, b: 10 };
     const rowsEv = groups.reduce((s, gr) => s + Math.max(1, gr.items.length) + (gr.more ? 0.6 : 0), 0);
@@ -751,6 +943,7 @@
       y = top + rowH * n + (gr.more ? rowH * 0.6 : 0) + gapG;
     }
     const used = y - gapG;
+    const dupPos = () => { for (const [d, rp] of dupOf) pos.set(d, pos.get(rp)); };
     const shift = Math.max(0, (H - pad.b - used) / 2 - 4);
     for (const p of pos.values()) p.y += shift;
     for (const gr of groups) { gr.y += shift; gr.moreY += shift; }
@@ -758,6 +951,29 @@
     const apiGap = others.length ? apiRow * 0.9 : 0;
     const apiTop = pad.t + Math.max(0, (H - pad.t - pad.b - apiRow * apiCol.length - apiGap) / 2);
     apiCol.forEach((n, i) => pos.set(n.id, { y: apiTop + apiRow * i + apiRow / 2 + (i >= loaded.length ? apiGap : 0) }));
+    if (loaded.length > 1) {
+      const want = loaded.map((n) => {
+        let sw = 0, sy = 0;
+        for (const e of edges) {
+          if (e.target !== n.id) continue;
+          const src = dupOf.get(e.source) ?? e.source;
+          if (!shownRep.has(src) || !pos.has(src)) continue;
+          sw += 1;
+          sy += pos.get(src).y;
+        }
+        return sw ? sy / sw : pos.get(n.id).y;
+      });
+      const lo = pad.t + apiRow / 2;
+      const hi = H - pad.b - apiRow / 2 - (others.length ? apiRow * others.length + apiGap : 0);
+      const ys = want.map((w) => Math.max(lo, Math.min(hi, w)));
+      for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i], ys[i - 1] + apiRow);
+      for (let i = ys.length - 1; i >= 0; i--) ys[i] = Math.min(ys[i], (i === ys.length - 1 ? hi : ys[i + 1] - apiRow));
+      for (let i = 1; i < ys.length; i++) ys[i] = Math.max(ys[i], ys[i - 1] + apiRow);
+      loaded.forEach((n, i) => pos.set(n.id, { y: ys[i] }));
+      const base = ys.at(-1) + apiRow / 2 + apiGap;
+      others.forEach((n, i) => pos.set(n.id, { y: base + apiRow * i + apiRow / 2 }));
+    }
+    dupPos();
     const qY = pad.t + (H - pad.t - pad.b) / 2;
 
     const prevG = state.prev && state.prev.graph;
@@ -768,7 +984,7 @@
     const root = svg("svg", { width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Subgraph the route walked: your task, its sub-requests, matching past Tasks and Clauses, and the tools they point to" });
     const head = (x, text, anchor) => root.append(svg("text", { x, y: 12, "text-anchor": anchor || "start", class: "colh", text }));
     head(colX.p0, multi ? "SUB-REQUESTS" : "TASK");
-    head(colX.e0, "MATCHED IN HYDRADB");
+    head(colX.e0, "MATCHED IN HYDRADB · SIMILARITY");
     head(colX.a0, "TOOLS · TOP " + K + " LOADED");
 
     const edgeLayer = svg("g", {});
@@ -790,9 +1006,14 @@
       const isNew = prevEdges && !prevEdges.has("q>" + it.id);
       link(gr.id, it.id, colX.p1, gr.y, colX.e0, pos.get(it.id).y, ty + (isNew ? " new" : ""), 1 + 5 * (maxW[ty] ? w / maxW[ty] : 0.3), (ty === "similar" ? "SIMILAR" : "MATCH") + " · " + w.toFixed(2));
     }
-    const last = edges.filter((e) => {
+    const lastSeen = new Set();
+    const last = edges.map((e) => (dupOf.has(e.source) ? { ...e, source: dupOf.get(e.source) } : e)).filter((e) => {
       const ty = String(e.type).toLowerCase();
-      return (ty === "used" || ty === "needs") && shown.has(e.source) && pos.has(e.target);
+      if (!((ty === "used" || ty === "needs") && shownRep.has(e.source) && pos.has(e.target))) return false;
+      const key = e.source + ">" + e.target;
+      if (lastSeen.has(key)) return false;
+      lastSeen.add(key);
+      return true;
     });
     const port = (key, other, half) => {
       const groupsBy = new Map();
@@ -807,13 +1028,30 @@
     };
     const outOff = port("source", "target", Math.max(0, cardH / 2 - 5));
     const inOff = port("target", "source", Math.max(0, Math.min(30, apiRow - 6) / 2 - 5));
+    const isSel = (id) => { const i = apiIdx(byId.get(id)); return rankWp.has(i) && rankWp.get(i) < K; };
+    const inDeg = new Map();
+    for (const e of last) if (isSel(e.target)) inDeg.set(e.target, (inDeg.get(e.target) || 0) + 1);
+    const lead = new Set();
+    const bySrc = new Map();
+    for (const e of last) if (isSel(e.target)) (bySrc.get(e.source) || bySrc.set(e.source, []).get(e.source)).push(e);
+    for (const list of bySrc.values()) {
+      const bc = bary.get(list[0].source) ?? 0;
+      const off = (e) => Math.abs(rankWp.get(apiIdx(byId.get(e.target))) - bc);
+      list.sort((a, b) => off(a) - off(b) || inDeg.get(a.target) - inDeg.get(b.target));
+      lead.add(list[0]);
+    }
+    for (const t of inDeg.keys()) {
+      if ([...lead].some((e) => e.target === t)) continue;
+      const cand = last.filter((e) => e.target === t).sort((a, b) => (w0.get(b.source) ?? 0) - (w0.get(a.source) ?? 0))[0];
+      if (cand) lead.add(cand);
+    }
     for (const e of last) {
       const ty = String(e.type).toLowerCase();
       const t = byId.get(e.target);
       const sel = rankWp.has(apiIdx(t)) && rankWp.get(apiIdx(t)) < K;
       const isNew = prevEdges && !prevEdges.has(e.source + ">" + e.target);
       const w = isNum(e.w) ? Math.abs(e.w) : 0;
-      link(e.source, e.target, colX.e1, pos.get(e.source).y + outOff.get(e), colX.a0, pos.get(e.target).y + inOff.get(e), ty + (sel ? " sel" : "") + (isNew ? " new" : ""), 0.8 + 2.6 * (maxW[ty] ? w / maxW[ty] : 0.3), e.type + (isNum(e.w) ? " · w " + e.w.toFixed(2) : ""));
+      link(e.source, e.target, colX.e1, pos.get(e.source).y + outOff.get(e), colX.a0, pos.get(e.target).y + inOff.get(e), ty + (sel ? " sel" : "") + (lead.has(e) ? " lead" : "") + (isNew ? " new" : ""), 0.8 + 2.6 * (maxW[ty] ? w / maxW[ty] : 0.3), e.type + (isNum(e.w) ? " · w " + e.w.toFixed(2) : ""));
     }
 
     const card = (id, x1, x2, cy, cls, kids, tipFn) => {
@@ -873,7 +1111,7 @@
         card(it.id, colX.e0, colX.e1, p.y, "ev task" + (isNew ? " new" : "") + (mine ? " taught" : ""), [
           svg("circle", { cx: colX.e0 + 11, cy: p.y, r: 4, class: "t" }),
           evLabel(colX.e0 + 22, p.y, (mine ? "Your lesson · " : "") + gist(t.text || it.text || "Task " + id), chars(colX.e1 - colX.e0 - 64)),
-          isNum(w) ? svg("text", { x: colX.e1 - 8, y: p.y + 4, "text-anchor": "end", class: "wv", text: w.toFixed(2) }) : null,
+          isNum(w) ? svg("text", { x: colX.e1 - 8, y: p.y + 4, "text-anchor": "end", class: "wv" }, dupN.get(it.id) ? svg("tspan", { class: "dupn", text: "×" + dupN.get(it.id) + " " }, svg("title", { text: dupN.get(it.id) + " past " + (it.kind === "task" ? "tasks" : "clauses") + " with this same text" })) : null, svg("tspan", { text: w.toFixed(2) })) : null,
         ].filter(Boolean), () => nodeTip(it, ctx));
       } else {
         const cl = clauseInfo.get(String(it.id).replace(/^c/, "")) || {};
@@ -881,7 +1119,7 @@
         card(it.id, colX.e0, colX.e1, p.y, "ev clause" + (isNew ? " new" : "") + (mineC ? " taught" : ""), [
           svg("rect", { x: colX.e0 + 7.5, y: p.y - 3.5, width: 7, height: 7, rx: 1, transform: "rotate(45 " + (colX.e0 + 11) + " " + p.y + ")", class: "c" }),
           evLabel(colX.e0 + 22, p.y, (mineC ? "Your lesson · " : "") + "“" + gist(cl.text || it.text || "Clause") + "”", chars(colX.e1 - colX.e0 - 64)),
-          isNum(w) ? svg("text", { x: colX.e1 - 8, y: p.y + 4, "text-anchor": "end", class: "wv", text: w.toFixed(2) }) : null,
+          isNum(w) ? svg("text", { x: colX.e1 - 8, y: p.y + 4, "text-anchor": "end", class: "wv" }, dupN.get(it.id) ? svg("tspan", { class: "dupn", text: "×" + dupN.get(it.id) + " " }, svg("title", { text: dupN.get(it.id) + " past " + (it.kind === "task" ? "tasks" : "clauses") + " with this same text" })) : null, svg("tspan", { text: w.toFixed(2) })) : null,
         ].filter(Boolean), () => nodeTip(it, ctx));
       }
     }
@@ -911,7 +1149,7 @@
       const info = apiInfo.get(idx);
       if (sel && info && maxScore > 0) {
         const v = voteOf(info);
-        const tot = v.task + v.clause + v.text || 1;
+        const tot = v.task + v.clause + v.text + v.tool || 1;
         const span = (colX.a1 - colX.a0 - 12) * Math.min(1, (info.score || tot) / maxScore);
         let x = colX.a0 + 6;
         for (const k of VOTE_KINDS) {
@@ -1367,6 +1605,7 @@
       }
     });
     $("#task").addEventListener("input", () => {
+      fitTask();
       if (state.example && $("#task").value.trim() !== String(state.example.text).trim()) {
         state.example = null;
         renderExamples();
