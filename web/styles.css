@@ -362,46 +362,53 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
 .tg:checked::after { content: ""; width: 4px; height: 8px; border: solid #04150e; border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
 
 /* frame 3: graph */
-.glegend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--muted); margin: -2px 0 4px; }
+.glegend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11.5px; color: var(--muted); margin: -2px 0 8px; }
 .glegend span { display: inline-flex; align-items: center; gap: 5px; }
 .glegend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .glegend .dot.q { background: var(--text); border-radius: 3px; }
 .glegend .dot.t { background: var(--task); }
 .glegend .dot.c { background: var(--clause); border-radius: 2px; transform: rotate(45deg) scale(0.85); }
-.glegend .dot.a { background: var(--panel); border: 1.5px solid var(--dim); }
-.glegend .dot.a.sel { background: var(--wp); border-color: var(--wp); }
-.graph { flex: 1 1 auto; min-height: 260px; position: relative; }
-.graph svg { display: block; }
-.graph .colh { font: 600 9.5px var(--mono); fill: var(--dim); letter-spacing: 0.1em; }
+.glegend .dot.a { background: var(--panel); border: 1.5px solid var(--dim); border-radius: 3px; }
+.glegend .dot.a.sel { background: var(--wp-soft); border-color: var(--wp); }
+.graph { flex: 1 1 auto; min-height: 360px; position: relative; }
+.graph svg { display: block; overflow: visible; }
+.graph .empty { display: grid; place-content: center; text-align: center; height: 100%; gap: 6px; color: var(--muted); }
+.graph .empty b { color: var(--text); font-weight: 600; }
+.graph .colh { font: 600 10px var(--mono); fill: var(--muted); letter-spacing: 0.1em; }
 .graph .edge { fill: none; stroke-linecap: round; transition: opacity 0.15s; }
-.graph .edge.similar { stroke: var(--task); opacity: 0.55; }
-.graph .edge.used { stroke: var(--dim); opacity: 0.45; }
-.graph .edge.used.sel { stroke: var(--wp); opacity: 0.75; }
-.graph .edge.text { stroke: var(--muted); opacity: 0.25; stroke-dasharray: 3 4; }
-.graph .edge.match { stroke: var(--clause); opacity: 0.55; }
-.graph .edge.needs { stroke: var(--dim); opacity: 0.4; stroke-dasharray: 5 3; }
-.graph .edge.needs.sel { stroke: var(--clause); opacity: 0.7; }
-
+.graph .edge.struct { stroke: var(--line2); opacity: 0.9; }
+.graph .edge.similar { stroke: var(--task); opacity: 0.6; }
+.graph .edge.match { stroke: var(--clause); opacity: 0.6; }
+.graph .edge.used { stroke: var(--task); opacity: 0.16; }
+.graph .edge.needs { stroke: var(--clause); opacity: 0.16; }
+.graph .edge.used.sel { opacity: 0.55; }
+.graph .edge.needs.sel { opacity: 0.55; }
 .graph .edge.new { stroke: var(--ok); opacity: 0.95; animation: edgein 1.6s ease-out; }
 @keyframes edgein { 0% { stroke-width: 10; opacity: 0.2; } 100% { opacity: 0.95; } }
-.graph .node { cursor: default; transition: opacity 0.15s; }
+.graph .node { transition: opacity 0.15s; outline: none; }
+.graph .node .card { fill: var(--panel2); stroke: var(--line2); stroke-width: 1; }
+.graph .node:focus-visible .card { stroke: var(--wp); stroke-width: 2; }
 .graph .node .q { fill: var(--text); }
 .graph .node .qt { fill: var(--bg); font: 700 11px var(--sans); }
-.graph .node .t { fill: var(--task); stroke: var(--panel); stroke-width: 2; }
-.graph .node .c { fill: var(--clause); stroke: var(--panel); stroke-width: 2; }
-.graph .node.clause .lbl { fill: #e7a6c8; }
-.graph .node .a { fill: var(--panel); stroke: var(--dim); stroke-width: 1.6; }
-.graph .node.sel .a { fill: var(--wp); stroke: var(--wp); }
-.graph .node.sel .ring { fill: none; stroke: var(--wp); stroke-opacity: 0.35; stroke-width: 4; }
-.graph .node.new .t, .graph .node.new .a, .graph .node.new .c { stroke: var(--ok); stroke-width: 2.5; }
-.graph .node.new .ring2 { fill: none; stroke: var(--ok); stroke-width: 2; animation: pulse 1.6s ease-out 2; }
-@keyframes pulse { 0% { r: 7; opacity: 1; } 100% { r: 22; opacity: 0; } }
-.graph .lbl { font: 11px var(--sans); fill: var(--muted); }
-.graph .lbl .w { font-family: var(--mono); fill: var(--dim); font-size: 10px; }
-.graph .node.sel .lbl { fill: var(--text); font-weight: 600; }
-.graph .lbl .ck { fill: var(--ok); font-weight: 800; }
-.graph.focus .edge:not(.hl), .graph.focus .node:not(.hl) { opacity: 0.12; }
-.graph.focus .edge.hl { opacity: 1; }
+.graph .node .t { fill: var(--task); }
+.graph .node .c { fill: var(--clause); }
+.graph .node.grp.part .card { stroke: rgba(244, 114, 182, 0.45); fill: rgba(244, 114, 182, 0.07); }
+.graph .node.grp.whole .card { stroke: rgba(245, 165, 36, 0.45); fill: rgba(245, 165, 36, 0.07); }
+.graph .node .pn { font: 700 11px var(--mono); fill: var(--clause); }
+.graph .node .lbl { font: 11.5px var(--sans); fill: var(--text); }
+.graph .node.ev .lbl { fill: #c3cad8; }
+.graph .node .wv, .graph .node .rk { font: 10.5px var(--mono); fill: var(--muted); }
+.graph .node.api .card { fill: var(--bg); stroke: var(--line); }
+.graph .node.api .lbl { fill: var(--muted); }
+.graph .node.api.sel .card { fill: rgba(90, 169, 255, 0.12); stroke: var(--wp); }
+.graph .node.api.sel .lbl { fill: var(--text); font-weight: 600; }
+.graph .node.api.sel .rk { fill: var(--wp); font-weight: 700; }
+.graph .node.api.needed .card { stroke: var(--ok); }
+.graph .node .ck { fill: var(--ok); font-weight: 800; font-size: 12px; }
+.graph .node.new .card { stroke: var(--ok); stroke-width: 2; }
+.graph .more { font: 11px var(--sans); fill: var(--muted); font-style: italic; }
+.graph.focus .edge:not(.hl), .graph.focus .node:not(.hl) { opacity: 0.18; }
+.graph.focus .edge.hl { opacity: 0.95; }
 
 .tokens { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 6px; }
 .tok-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }

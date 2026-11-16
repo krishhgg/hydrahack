@@ -60,6 +60,18 @@
     s = String(s ?? "");
     return s.length > n ? s.slice(0, Math.max(1, n - 1)) + "…" : s;
   };
+  const gist = (s) => {
+    let t = String(s ?? "").trim();
+    for (let i = 0; i < 3; i++) {
+      t = t.replace(/^(also|and|additionally|furthermore|moreover|then|finally|please|hey|hi)[,!.]?\s+/i, "")
+        .replace(/^(i'?m|i am|we'?re|we are)\s+(a|an|the)?\s*/i, "")
+        .replace(/^(can|could|would|will)\s+(you|u)\s+(please\s+)?/i, "")
+        .replace(/^(i|we)\s+(would like|want|need|wish)\s+(you\s+)?to\s+/i, "")
+        .replace(/^(help me|help us)\s+(to\s+)?/i, "")
+        .replace(/^(provide|give|get|fetch|find|show|tell|send)\s+(me|us)\s+(with\s+)?/i, "$1 ");
+    }
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const niceStep = (r) => {
     const e = 10 ** Math.floor(Math.log10(r || 1));
@@ -577,155 +589,207 @@
     const nodes = Array.isArray(g.nodes) ? g.nodes.filter((n) => n && n.id != null) : [];
     const edges = Array.isArray(g.edges) ? g.edges.filter((e) => e && e.source != null && e.target != null) : [];
     if (!nodes.length) {
-      host.append(el("div", { class: "empty", text: state.route ? "No graph returned for this route." : "Route a task to see the subgraph it traversed." }));
+      host.append(el("div", { class: "empty" },
+        el("b", { text: state.route ? "No graph returned for this route." : "Nothing routed yet." }),
+        el("span", { text: state.route ? "" : " Pick a held-out task or type one: the subgraph Waypoint walks in HydraDB appears here." })));
       return;
     }
-    const W = Math.max(320, host.clientWidth);
-    const H = Math.max(240, host.clientHeight);
+    const W = Math.max(560, host.clientWidth);
+    const H = Math.max(360, host.clientHeight);
     const byId = new Map(nodes.map((n) => [n.id, n]));
-    const col = (n) => (n.kind === "query" ? 0 : n.kind === "task" || n.kind === "clause" ? 1 : 2);
-    const cols = [[], [], []];
-    for (const n of nodes) cols[col(n)].push(n);
-    const multiPart = Array.isArray(r.parts) && r.parts.length > 1;
+    const parts = Array.isArray(r.parts) ? r.parts.filter((p) => typeof p === "string" && p.trim()) : [];
+    const multi = parts.length > 1;
+    const clauseInfo = new Map((r.clauses || []).filter(Boolean).map((c) => [String(c.id), c]));
+    const taskInfo = new Map((r.similar_tasks || []).filter(Boolean).map((t) => [String(t.id), t]));
+    const partOf = (n) => {
+      if (isNum(n.part)) return n.part;
+      const c = clauseInfo.get(String(n.id).replace(/^c/, ""));
+      return c && isNum(c.part) ? c.part : 0;
+    };
+    const w0 = new Map();
+    for (const e of edges) if (e.source === "q" && isNum(e.w)) w0.set(e.target, e.w);
+
+    const TASKS = 4;
+    const PER_PART = 3;
+    const tasksAll = nodes.filter((n) => n.kind === "task").sort((a, b) => (w0.get(b.id) ?? 0) - (w0.get(a.id) ?? 0));
+    const groups = [{ id: "w", label: multi ? "Whole task" : "Your task", sub: "similar past runs", kind: "task", items: tasksAll.slice(0, TASKS), more: Math.max(0, tasksAll.length - TASKS) }];
+    const clausesAll = nodes.filter((n) => n.kind === "clause");
+    const nGroups = multi ? parts.length : 1;
+    for (let i = 0; i < nGroups; i++) {
+      const cs = clausesAll.filter((n) => (multi ? partOf(n) === i : true)).sort((a, b) => (w0.get(b.id) ?? 0) - (w0.get(a.id) ?? 0));
+      if (!cs.length && multi) {
+        groups.push({ id: "p" + i, label: "Part " + (i + 1), text: parts[i], kind: "clause", items: [], more: 0, part: i });
+        continue;
+      }
+      if (!cs.length) continue;
+      groups.push({ id: "p" + i, label: multi ? "Part " + (i + 1) : "Sub-requests", text: multi ? parts[i] : "", kind: "clause", items: cs.slice(0, PER_PART), more: Math.max(0, cs.length - PER_PART), part: multi ? i : null });
+    }
+    const shown = new Set(groups.flatMap((gr) => gr.items.map((n) => n.id)));
+
+    const rankWp = new Map((r.tools || []).map((t, i) => [t.idx, i]));
+    const rankBm = new Map((r.baseline || []).map((t, i) => [t.idx, i]));
+    const apis = nodes.filter((n) => n.kind === "api");
+    const loaded = apis.filter((n) => rankWp.has(apiIdx(n)) && rankWp.get(apiIdx(n)) < K).sort((a, b) => rankWp.get(apiIdx(a)) - rankWp.get(apiIdx(b)));
+    const support = (n) => edges.filter((e) => e.target === n.id && shown.has(e.source)).reduce((s, e) => s + (isNum(e.w) ? e.w : 0), 0);
+    const others = apis.filter((n) => !loaded.includes(n)).sort((a, b) => support(b) - support(a)).slice(0, 4);
+    const apiCol = [...loaded, ...others];
+
+    const pad = { t: 30, b: 10 };
+    const rowsEv = groups.reduce((s, gr) => s + Math.max(1, gr.items.length) + (gr.more ? 0.6 : 0), 0);
+    const gapG = 14;
+    const rowH = Math.max(22, Math.min(34, (H - pad.t - pad.b - gapG * (groups.length - 1)) / rowsEv));
+    const cardH = Math.min(26, rowH - 4);
+    const colX = { q: 0, p0: 76, p1: Math.round(W * 0.31), e0: Math.round(W * 0.365), e1: Math.round(W * 0.665), a0: Math.round(W * 0.735) };
+    colX.a1 = W - 2;
+    const pos = new Map();
+    let y = pad.t;
+    for (const gr of groups) {
+      const n = Math.max(1, gr.items.length);
+      const top = y;
+      gr.items.forEach((it, i) => pos.set(it.id, { y: top + rowH * i + rowH / 2 }));
+      gr.y = top + (rowH * n) / 2;
+      gr.moreY = top + rowH * n + 6;
+      y = top + rowH * n + (gr.more ? rowH * 0.6 : 0) + gapG;
+    }
+    const used = y - gapG;
+    const shift = Math.max(0, (H - pad.b - used) / 2 - 4);
+    for (const p of pos.values()) p.y += shift;
+    for (const gr of groups) { gr.y += shift; gr.moreY += shift; }
+    const apiRow = Math.min(rowH * 1.25, 40);
+    const apiGap = others.length ? apiRow * 0.9 : 0;
+    const apiTop = pad.t + Math.max(0, (H - pad.t - pad.b - apiRow * apiCol.length - apiGap) / 2);
+    apiCol.forEach((n, i) => pos.set(n.id, { y: apiTop + apiRow * i + apiRow / 2 + (i >= loaded.length ? apiGap : 0) }));
+    const qY = pad.t + (H - pad.t - pad.b) / 2;
 
     const prevG = state.prev && state.prev.graph;
     const prevNodes = prevG && Array.isArray(prevG.nodes) ? new Set(prevG.nodes.map((n) => n.id)) : null;
     const prevEdges = prevG && Array.isArray(prevG.edges) ? new Set(prevG.edges.map((e) => e.source + ">" + e.target)) : null;
-
-    const simW = new Map();
-    for (const e of edges) {
-      const s = byId.get(e.source);
-      const t = byId.get(e.target);
-      if (s && t && col(s) === 0 && col(t) === 1) simW.set(t.id, isNum(e.w) ? e.w : 0);
-    }
-    const clausePart = new Map(cols[1].filter((n) => n.kind === "clause").map((n) => [n.id, isNum(n.part) ? n.part : partOfClause(r, String(n.id).replace(/^c/, ""))]));
-    cols[1].sort((a, b) => {
-      if (a.kind !== b.kind) return a.kind === "task" ? -1 : 1;
-      if (a.kind === "clause") {
-        const pa = clausePart.get(a.id) ?? 99;
-        const pb = clausePart.get(b.id) ?? 99;
-        if (pa !== pb) return pa - pb;
-      }
-      return (simW.get(b.id) ?? 0) - (simW.get(a.id) ?? 0);
-    });
-
-    const top = 40;
-    const bot = 12;
-    const pos = new Map();
-    const xs = [42, Math.round(W * 0.33), Math.round(W * 0.585)];
-    const place = (arr, x, maxGap) => {
-      const avail = H - top - bot;
-      const gap = arr.length > 1 ? Math.min(maxGap, avail / (arr.length - 1)) : 0;
-      const start = top + (avail - gap * (arr.length - 1)) / 2;
-      arr.forEach((n, i) => pos.set(n.id, { x, y: start + gap * i }));
-    };
-    place(cols[0], xs[0], 60);
-    place(cols[1], xs[1], 92);
-
-    const rankWp = new Map((r.tools || []).map((t, i) => [t.idx, i]));
-    const rankBm = new Map((r.baseline || []).map((t, i) => [t.idx, i]));
-    const bary = new Map();
-    for (const n of cols[2]) {
-      const ys = [];
-      for (const e of edges) {
-        const other = e.target === n.id ? e.source : e.source === n.id ? e.target : null;
-        const p = other != null && pos.get(other);
-        if (p && byId.get(other) && col(byId.get(other)) === 1) ys.push(p.y);
-      }
-      bary.set(n.id, ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : H + (rankWp.get(apiIdx(n)) ?? 99));
-    }
-    cols[2].sort((a, b) => bary.get(a.id) - bary.get(b.id));
-    place(cols[2], xs[2], 46);
-
-    const root = svg("svg", { width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Subgraph used by the route" });
-    root.append(svg("text", { x: 10, y: 12, class: "colh", text: "QUERY" }));
-    root.append(svg("text", { x: xs[1], y: 12, "text-anchor": "middle", class: "colh", text: "PAST TASKS · CLAUSES" }));
-    root.append(svg("text", { x: xs[2] - 8, y: 12, class: "colh", text: "APIS (top " + K + " loaded)" }));
-
-    const maxByType = {};
-    for (const e of edges) {
-      const ty = String(e.type || "edge").toLowerCase();
-      maxByType[ty] = Math.max(maxByType[ty] || 0, isNum(e.w) ? Math.abs(e.w) : 0);
-    }
-    const radius = (n) => (col(n) === 0 ? 36 : 7);
-    const edgeLayer = svg("g", {});
-    for (const e of edges) {
-      let s = byId.get(e.source);
-      let t = byId.get(e.target);
-      if (!s || !t) continue;
-      let a = pos.get(s.id);
-      let b = pos.get(t.id);
-      if (a.x > b.x) { [s, t] = [t, s]; [a, b] = [b, a]; }
-      const ty = String(e.type || "edge").toLowerCase();
-      const w = isNum(e.w) ? Math.abs(e.w) : 0;
-      const sw = 0.8 + 4.6 * (maxByType[ty] ? w / maxByType[ty] : 0.3);
-      const sx = a.x + radius(s);
-      const tx = b.x - radius(t);
-      const mx = (sx + tx) / 2;
-      const isNew = prevEdges && !prevEdges.has(e.source + ">" + e.target);
-      const cls = ["edge", ty, t.selected && "sel", isNew && "new"].filter(Boolean).join(" ");
-      const part = ty === "match" ? clausePart.get(t.id) : null;
-      edgeLayer.append(svg("path", {
-        d: "M" + sx + "," + a.y + " C" + mx + "," + a.y + " " + mx + "," + b.y + " " + tx + "," + b.y,
-        class: cls, "stroke-width": sw.toFixed(2), "data-s": s.id, "data-t": t.id,
-      }, svg("title", { text: (e.type || "edge") + (isNum(e.w) ? " · w " + e.w.toFixed(2) : "") + (isNum(part) ? " · part " + (part + 1) : "") })));
-    }
-    root.append(edgeLayer);
-
     const gold = goldSet();
-    const tasks = new Map((r.similar_tasks || []).map((t) => [String(t.id), t]));
-    const clauses = new Map((r.clauses || []).filter(Boolean).map((c) => [String(c.id), c]));
+
+    const root = svg("svg", { width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Subgraph the route walked: your task, its sub-requests, matching past Tasks and Clauses, and the tools they point to" });
+    const head = (x, text, anchor) => root.append(svg("text", { x, y: 12, "text-anchor": anchor || "start", class: "colh", text }));
+    head(colX.p0, multi ? "SUB-REQUESTS" : "TASK");
+    head(colX.e0, "MATCHED IN HYDRADB");
+    head(colX.a0, "TOOLS · TOP " + K + " LOADED");
+
+    const edgeLayer = svg("g", {});
+    const nodeLayer = svg("g", {});
+    root.append(edgeLayer, nodeLayer);
+    const maxW = {};
+    for (const e of edges) { const t = String(e.type).toLowerCase(); maxW[t] = Math.max(maxW[t] || 0, isNum(e.w) ? Math.abs(e.w) : 0); }
+    const link = (s, t, x1, y1, x2, y2, cls, sw, title) => {
+      const mx = (x1 + x2) / 2;
+      edgeLayer.append(svg("path", { d: "M" + x1 + "," + y1 + " C" + mx + "," + y1 + " " + mx + "," + y2 + " " + x2 + "," + y2, class: "edge " + cls, "stroke-width": sw.toFixed(2), "data-s": s, "data-t": t }, title ? svg("title", { text: title }) : null));
+    };
+
+    const grpOf = new Map();
+    for (const gr of groups) for (const it of gr.items) grpOf.set(it.id, gr.id);
+    for (const gr of groups) link("q", gr.id, colX.q + 64, qY, colX.p0, gr.y, "struct", 1.4);
+    for (const gr of groups) for (const it of gr.items) {
+      const w = w0.get(it.id) ?? 0;
+      const ty = it.kind === "task" ? "similar" : "match";
+      const isNew = prevEdges && !prevEdges.has("q>" + it.id);
+      link(gr.id, it.id, colX.p1, gr.y, colX.e0, pos.get(it.id).y, ty + (isNew ? " new" : ""), 1 + 5 * (maxW[ty] ? w / maxW[ty] : 0.3), (ty === "similar" ? "SIMILAR" : "MATCH") + " · " + w.toFixed(2));
+    }
+    for (const e of edges) {
+      const ty = String(e.type).toLowerCase();
+      if (ty !== "used" && ty !== "needs") continue;
+      if (!shown.has(e.source) || !pos.has(e.target)) continue;
+      const t = byId.get(e.target);
+      const sel = rankWp.has(apiIdx(t)) && rankWp.get(apiIdx(t)) < K;
+      const isNew = prevEdges && !prevEdges.has(e.source + ">" + e.target);
+      const w = isNum(e.w) ? Math.abs(e.w) : 0;
+      link(e.source, e.target, colX.e1, pos.get(e.source).y, colX.a0, pos.get(e.target).y, ty + (sel ? " sel" : "") + (isNew ? " new" : ""), 1 + 3.5 * (maxW[ty] ? w / maxW[ty] : 0.3), e.type + (isNum(e.w) ? " · w " + e.w.toFixed(2) : ""));
+    }
+
+    const card = (id, x1, x2, cy, cls, kids, tipFn) => {
+      const gEl = svg("g", { class: "node " + cls, "data-id": id, tabindex: "0" });
+      gEl.append(svg("rect", { x: x1, y: cy - cardH / 2, width: x2 - x1, height: cardH, rx: 6, class: "card" }));
+      for (const k of kids) gEl.append(k);
+      if (tipFn) {
+        const on = (ev) => { focusGraph(id); showTip(ev, ...tipFn()); };
+        gEl.addEventListener("mouseenter", on);
+        gEl.addEventListener("mousemove", (ev) => moveTip(ev));
+        gEl.addEventListener("mouseleave", () => { focusGraph(null); hideTip(); });
+        gEl.addEventListener("focus", () => { focusGraph(id); const b = gEl.getBoundingClientRect(); showTip({ clientX: b.right, clientY: b.top }, ...tipFn()); });
+        gEl.addEventListener("blur", () => { focusGraph(null); hideTip(); });
+      }
+      nodeLayer.append(gEl);
+      return gEl;
+    };
+    const chars = (px) => Math.max(6, Math.floor(px / 6.4));
+
+    const qg = svg("g", { class: "node query", "data-id": "q" });
+    qg.append(svg("rect", { x: colX.q, y: qY - 14, width: 64, height: 28, rx: 14, class: "q" }));
+    qg.append(svg("text", { x: colX.q + 32, y: qY + 4, "text-anchor": "middle", class: "qt", text: "your task" }));
+    qg.addEventListener("mouseenter", (ev) => showTip(ev, el("div", { class: "th", text: "Your task" }), el("div", { class: "tt", text: trunc(state.routedTask, 320) })));
+    qg.addEventListener("mouseleave", hideTip);
+    nodeLayer.append(qg);
+
+    for (const gr of groups) {
+      const isPart = gr.part != null;
+      const label = isPart ? trunc(gist(gr.text), chars(colX.p1 - colX.p0 - 30)) : gr.label;
+      card(gr.id, colX.p0, colX.p1, gr.y, "grp " + (isPart ? "part" : "whole"), [
+        isPart ? svg("text", { x: colX.p0 + 8, y: gr.y + 4, class: "pn", text: String(gr.part + 1) }) : svg("circle", { cx: colX.p0 + 11, cy: gr.y, r: 4, class: "t" }),
+        svg("text", { x: colX.p0 + 22, y: gr.y + 4, class: "lbl", text: isPart ? label : gr.label }),
+      ], () => isPart
+        ? [el("div", { class: "th", text: "Part " + (gr.part + 1) + " of your task" }), el("div", { class: "tt", text: "“" + trunc(gr.text, 300) + "”" }), el("div", { class: "ts", text: "matched against past Clauses → NEEDS edges" })]
+        : [el("div", { class: "th", text: "Your whole task" }), el("div", { class: "ts", text: "matched against past Tasks → USED edges" })]);
+      if (gr.more) nodeLayer.append(svg("text", { x: colX.e0 + 6, y: gr.moreY + 4, class: "more", text: "+" + gr.more + " more " + (gr.kind === "task" ? "past tasks" : "clauses") + " also vote" }));
+      if (!gr.items.length) nodeLayer.append(svg("text", { x: colX.e0 + 6, y: gr.y + 4, class: "more", text: "no matching clause" }));
+    }
+
+    for (const gr of groups) for (const it of gr.items) {
+      const p = pos.get(it.id);
+      const w = w0.get(it.id);
+      const isNew = prevNodes && !prevNodes.has(it.id);
+      if (it.kind === "task") {
+        const id = taskId(it);
+        const t = taskInfo.get(String(id)) || {};
+        card(it.id, colX.e0, colX.e1, p.y, "ev task" + (isNew ? " new" : ""), [
+          svg("circle", { cx: colX.e0 + 11, cy: p.y, r: 4, class: "t" }),
+          svg("text", { x: colX.e0 + 22, y: p.y + 4, class: "lbl", text: trunc(gist(t.text || it.text || "Task " + id), chars(colX.e1 - colX.e0 - 64)) }),
+          isNum(w) ? svg("text", { x: colX.e1 - 8, y: p.y + 4, "text-anchor": "end", class: "wv", text: w.toFixed(2) }) : null,
+        ].filter(Boolean), () => nodeTip(it, ctx));
+      } else {
+        const cl = clauseInfo.get(String(it.id).replace(/^c/, "")) || {};
+        card(it.id, colX.e0, colX.e1, p.y, "ev clause" + (isNew ? " new" : ""), [
+          svg("rect", { x: colX.e0 + 7.5, y: p.y - 3.5, width: 7, height: 7, rx: 1, transform: "rotate(45 " + (colX.e0 + 11) + " " + p.y + ")", class: "c" }),
+          svg("text", { x: colX.e0 + 22, y: p.y + 4, class: "lbl", text: "“" + trunc(gist(cl.text || it.text || "Clause"), chars(colX.e1 - colX.e0 - 70)) + "”" }),
+          isNum(w) ? svg("text", { x: colX.e1 - 8, y: p.y + 4, "text-anchor": "end", class: "wv", text: w.toFixed(2) }) : null,
+        ].filter(Boolean), () => nodeTip(it, ctx));
+      }
+    }
+
     const apiInfo = new Map();
     for (const t of [...(r.baseline || []), ...(r.tools || [])]) if (t) apiInfo.set(t.idx, t);
     const apiName = (i) => (apiInfo.get(i) && apiInfo.get(i).name) || (byId.get("a" + i) && byId.get("a" + i).label) || "API " + i;
-    const labelChars = Math.max(8, Math.floor((W - xs[2] - 16) / 6.3));
-
-    for (const n of nodes) {
+    const ctx = { tasks: taskInfo, clauses: clauseInfo, clausePart: new Map(clausesAll.map((n) => [n.id, partOf(n)])), apiInfo, apiName, rankWp, rankBm, gold, simW: w0 };
+    const apiCardH = Math.min(30, apiRow - 6);
+    for (const n of apiCol) {
+      const idx = apiIdx(n);
       const p = pos.get(n.id);
-      const c = col(n);
+      const rk = rankWp.get(idx);
+      const sel = rk != null && rk < K;
+      const needed = gold && gold.has(idx);
       const isNew = prevNodes && !prevNodes.has(n.id);
-      const kindCls = n.kind === "clause" ? "clause" : c === 1 ? "task" : "";
-      const gEl = svg("g", { class: ["node", kindCls, n.selected && "sel", isNew && "new"].filter(Boolean).join(" "), "data-id": n.id, transform: "translate(" + p.x + "," + p.y + ")" });
-      if (c === 0) {
-        gEl.append(svg("rect", { x: -36, y: -12, width: 72, height: 24, rx: 12, class: "q" }));
-        gEl.append(svg("text", { x: 0, y: 4, "text-anchor": "middle", class: "qt", text: trunc(n.label || "your task", 11) }));
-      } else if (c === 1) {
-        if (isNew) gEl.append(svg("circle", { r: 7, class: "ring2" }));
-        const w = simW.get(n.id);
-        if (n.kind === "clause") {
-          gEl.append(svg("rect", { x: -5.5, y: -5.5, width: 11, height: 11, rx: 2, transform: "rotate(45)", class: "c" }));
-          const cl = clauses.get(String(n.id).replace(/^c/, "")) || {};
-          const part = clausePart.get(n.id);
-          const label = (multiPart && isNum(part) ? "P" + (part + 1) + " · " : "") + (cl.task != null ? "Task " + cl.task : n.label || "Clause");
-          gEl.append(svg("text", { x: 0, y: -11, "text-anchor": "middle", class: "lbl" },
-            trunc(label, 18), isNum(w) ? svg("tspan", { class: "w", text: "  " + w.toFixed(2) }) : null));
-        } else {
-          gEl.append(svg("circle", { r: 7, class: "t" }));
-          gEl.append(svg("text", { x: 0, y: -11, "text-anchor": "middle", class: "lbl" },
-            trunc(n.label || "Task " + taskId(n), 16), isNum(w) ? svg("tspan", { class: "w", text: "  " + w.toFixed(2) }) : null));
-        }
-      } else {
-        const idx = apiIdx(n);
-        if (n.selected) gEl.append(svg("circle", { r: 10, class: "ring" }));
-        if (isNew) gEl.append(svg("circle", { r: 7, class: "ring2" }));
-        gEl.append(svg("circle", { r: n.selected ? 6.5 : 5, class: "a" }));
-        const needed = gold && gold.has(idx);
-        gEl.append(svg("text", { x: 13, y: 4, class: "lbl" },
-          trunc(n.label || apiName(idx), labelChars - (needed ? 2 : 0)),
-          needed ? svg("tspan", { class: "ck", text: " ✓" }) : null));
-      }
-      const ctx = { tasks, clauses, clausePart, apiInfo, apiName, rankWp, rankBm, gold, simW };
-      gEl.addEventListener("mouseenter", (ev) => { focusGraph(n.id); showTip(ev, ...nodeTip(n, ctx)); });
-      gEl.addEventListener("mousemove", (ev) => moveTip(ev));
-      gEl.addEventListener("mouseleave", () => { focusGraph(null); hideTip(); });
-      root.append(gEl);
+      const gEl = card(n.id, colX.a0, colX.a1, p.y, "api" + (sel ? " sel" : "") + (needed ? " needed" : "") + (isNew ? " new" : ""), [
+        svg("text", { x: colX.a0 + 10, y: p.y + 4, class: "rk", text: sel ? String(rk + 1) : "–" }),
+        svg("text", { x: colX.a0 + 26, y: p.y + 4, class: "lbl", text: trunc(apiName(idx), chars(colX.a1 - colX.a0 - 60)) }),
+        needed ? svg("text", { x: colX.a1 - 10, y: p.y + 4, "text-anchor": "end", class: "ck", text: "✓" }) : null,
+      ].filter(Boolean), () => nodeTip(n, ctx));
+      const rect = gEl.querySelector("rect");
+      rect.setAttribute("y", p.y - apiCardH / 2);
+      rect.setAttribute("height", apiCardH);
     }
+    if (others.length) nodeLayer.append(svg("text", { x: colX.a0 + 2, y: pos.get(others[0].id).y - apiRow / 2 - 4, class: "more", text: "reached, not loaded" }));
     host.append(root);
 
-    const colOf = {};
+    const colOf = { q: 0 };
+    for (const gr of groups) colOf[gr.id] = 0.5;
+    for (const n of nodes) if (n.kind !== "query") colOf[n.id] = n.kind === "api" ? 2 : 1;
     const partNodes = {};
-    for (const n of nodes) colOf[n.id] = col(n);
-    for (const [id, part] of clausePart) if (isNum(part)) (partNodes[part] = partNodes[part] || []).push(id);
+    for (const gr of groups) if (gr.part != null) partNodes[gr.part] = [gr.id];
     gIndex = { colOf, partNodes };
   }
 
@@ -787,25 +851,22 @@
     const edges = [...host.querySelectorAll(".edge")];
     const keepE = new Set();
     const keepN = new Set(live);
-    const add = (e) => { keepE.add(e); keepN.add(e.dataset.s); keepN.add(e.dataset.t); };
-    const touches = (e, id) => e.dataset.s === id || e.dataset.t === id;
-    for (const id of live) {
-      const c = gi.colOf[id];
-      if (c === 0) { edges.forEach(add); continue; }
-      if (c === 1) { edges.forEach((e) => touches(e, id) && add(e)); continue; }
-      const mids = new Set();
-      for (const e of edges) {
-        if (!touches(e, id)) continue;
-        add(e);
-        const other = e.dataset.s === id ? e.dataset.t : e.dataset.s;
-        if (gi.colOf[other] === 1) mids.add(other);
+    const walk = (from, to) => {
+      const queue = [...live];
+      const seen = new Set(live);
+      while (queue.length) {
+        const id = queue.shift();
+        for (const e of edges) {
+          if (e.dataset[from] !== id) continue;
+          keepE.add(e);
+          const other = e.dataset[to];
+          keepN.add(other);
+          if (!seen.has(other)) { seen.add(other); queue.push(other); }
+        }
       }
-      for (const e of edges) {
-        const s = e.dataset.s;
-        const t = e.dataset.t;
-        if ((mids.has(s) && gi.colOf[t] === 0) || (mids.has(t) && gi.colOf[s] === 0)) add(e);
-      }
-    }
+    };
+    walk("t", "s");
+    if (!live.some((id) => gi.colOf[id] === 0)) walk("s", "t");
     host.classList.add("focus");
     keepE.forEach((e) => e.classList.add("hl"));
     host.querySelectorAll(".node").forEach((n) => keepN.has(n.dataset.id) && n.classList.add("hl"));
