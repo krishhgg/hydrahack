@@ -81,6 +81,11 @@ engine2=$!
       grep -E ' (/|/data|/tmp) ' /proc/mounts | cut -c1-90 | head -5
       echo "--- fresh-store engine: readyz $(timeout 8 bash -c 'exec 3<>/dev/tcp/127.0.0.1/29090; printf "GET /readyz HTTP/1.0\r\n\r\n" >&3; head -n1 <&3' 2>&1)"
       tail -n 6 /tmp/engine2.log 2>&1 | cut -c1-200
+      echo "--- last healthcheck runs (rc, seconds)"
+      tail -n 5 /tmp/hc.log 2>&1
+      qs=$SECONDS
+      qout=$(timeout 25 bash -c 'exec 3<>/dev/tcp/127.0.0.1/8443; b="{\"cell_id\":\"cell-0\",\"query_id\":\"diag-$RANDOM$RANDOM\",\"query\":\"RETURN 1 AS x\"}"; printf "POST /v1/graphs/default/query HTTP/1.0\r\nHost: 127.0.0.1\r\nAuthorization: Bearer %s\r\nContent-Type: application/json\r\nContent-Length: %s\r\nConnection: close\r\n\r\n%s" "$HYDRADB_TOKEN" "${#b}" "$b" >&3; head -c 300 <&3' 2>&1 | tr -d '\r' | head -c 400)
+      echo "raw query: $((SECONDS - qs))s: $qout"
       echo "--- engine log tail"
       tail -n 25 /tmp/engine.log 2>&1 | cut -c1-220
     } > /tmp/diag.tmp 2>&1
@@ -114,7 +119,11 @@ while [ "$SECONDS" -lt 1200 ]; do
 ' ' ') | mem: $(cat /sys/fs/cgroup/memory.max 2>/dev/null) | /data: $(df -h /data | tail -1)" >&2
     exit 1
   fi
-  if timeout 20 "${drop[@]}" /usr/local/bin/hydradb-healthcheck >/dev/null 2>&1; then
+  hs=$SECONDS
+  rc=0
+  timeout 20 "${drop[@]}" /usr/local/bin/hydradb-healthcheck >/dev/null 2>&1 || rc=$?
+  echo "t=$SECONDS rc=$rc took=$((SECONDS - hs))s" >> /tmp/hc.log
+  if [ "$rc" = 0 ]; then
     ready=1
     break
   fi
