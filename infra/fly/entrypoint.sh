@@ -21,6 +21,17 @@ import http.server, json, os
 body = json.dumps({"ok": False, "ready": False, "status": "warming"}).encode()
 class H(http.server.BaseHTTPRequestHandler):
     def _r(self):
+        if self.path == "/__diag":
+            try:
+                text = open("/tmp/diag.txt", "rb").read()
+            except OSError:
+                text = b"no diag yet"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(text)))
+            self.end_headers()
+            self.wfile.write(text)
+            return
         self.send_response(200 if self.path == "/health" else 503)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
@@ -33,8 +44,31 @@ http.server.ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("PORT", "8080")))
 ' &
 warm=$!
 
-"${drop[@]}" /usr/local/bin/hydradb-entrypoint &
+"${drop[@]}" /usr/local/bin/hydradb-entrypoint > >(tee -a /tmp/engine.log) 2>&1 &
 db=$!
+
+# Temporary: a snapshot of the engine's state at /__diag on the warm-up listener, because Render's
+# log stream stops forwarding this container's output after the first second.
+(
+  while true; do
+    {
+      date -u +%T
+      echo "uptime=$SECONDS cpu.max=$(cat /sys/fs/cgroup/cpu.max 2>/dev/null) $(tr '
+' ' ' </sys/fs/cgroup/cpu.stat 2>/dev/null)"
+      echo "mem.current=$(cat /sys/fs/cgroup/memory.current 2>/dev/null) events=$(tr '
+' ' ' </sys/fs/cgroup/memory.events 2>/dev/null)"
+      ps -eo pid,stat,pcpu,rss,nlwp,etime,time,comm 2>&1 | head -20
+      echo "readyz: $(timeout 8 bash -c 'exec 3<>/dev/tcp/127.0.0.1/9090; printf "GET /readyz HTTP/1.0
+
+" >&3; head -n1 <&3' 2>&1)"
+      echo "--- engine log tail"
+      tail -n 25 /tmp/engine.log 2>&1 | cut -c1-220
+    } > /tmp/diag.tmp 2>&1
+    mv /tmp/diag.tmp /tmp/diag.txt
+    sleep 10
+  done
+) &
+diag_worker=$!
 
 # Engine state for the platform log while it opens its store (Render shows nothing else after the
 # first lines, so a hang there is otherwise invisible).
@@ -69,7 +103,7 @@ while [ "$SECONDS" -lt 1200 ]; do
 done
 [ "$ready" = 1 ] || { echo "hydradb did not become healthy in 1200s" >&2; diag; exit 1; }
 echo "hydradb healthy"
-kill "$warm" 2>/dev/null || true
+kill "$warm" "$diag_worker" 2>/dev/null || true
 wait "$warm" 2>/dev/null || true
 
 cd /app
