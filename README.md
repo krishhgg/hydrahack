@@ -26,12 +26,32 @@ Metric: **Completeness@5**, the share of held-out tasks where every needed tool 
 | Stateless BM25 tool search (baseline) | 26.7% | 56.0% |
 | Flat memory: copy the nearest past run's tools | 60.3% | 76.0% |
 | Flat k-NN: Waypoint's scoring and candidate budget over whole past runs in plain dicts | 69.9% | 83.5% |
-| **Waypoint** (experience graph in HydraDB) | **70.3%** | **83.9%** |
+| **Waypoint** (experience graph in HydraDB) | **70.7%** | **84.1%** |
 
-- **2.6x over stateless tool search**, and 714 tool-schema tokens per task against 200,953 for the whole catalog (281x fewer).
-- The curve rises at every checkpoint: see [docs/img/waypoint-curve.svg](docs/img/waypoint-curve.svg).
-- **Most of the gain is the learning loop.** A budget-matched plain store gets 69.9%. What the graph structure adds is concentrated where a new catalog lives: on tool sets never seen in training, 41.5% against 38.4%, and it reaches the same accuracy with roughly 10% to 48% fewer runs (interpolated between checkpoints, so approximate; see the data-efficiency table in docs/results.md). On tool sets seen in training the two are level (78.2% against 78.5%).
-- Both flat baselines run on Python dicts, not in HydraDB, and a parity test shows the same traversal returns identical results either way. We therefore attribute the accuracy to the learning design, not the engine; HydraDB is where the graph lives in production: persistent, shared by every agent that routes through it, and traversed live.
+- **About 2.6x over stateless tool search**, and 713 tool-schema tokens per task against 200,953 for the whole catalog (282x fewer). The curve rises at every checkpoint: see [docs/img/waypoint-curve.svg](docs/img/waypoint-curve.svg).
+- **Most of the gain is the learning loop.** On familiar tasks a budget-matched plain store is as good as the graph (78.5% against 78.2% on tool sets seen in training, 69.9% against 70.7% overall).
+
+### Would it fall apart on a plain store?
+
+On the tasks a plain store handles well, no difference. On the tasks it cannot, yes. A catalog keeps growing after launch, and a new endpoint has no past runs. We held out a random 10% of the catalog (142 APIs) from every training run and scored the test tasks that need one of them (561 tasks):
+
+| Router | Tasks that need a new API | All tasks under the holdout |
+|---|---|---|
+| Stateless BM25 | 22.8% | 26.7% |
+| Flat k-NN (plain store, same scoring and budget) | 1.8% | 55.1% |
+| **Waypoint** | **24.2%** | **60.9%** |
+
+The plain store collapses to 1.8% because its votes bury any tool nobody has used. Waypoint reaches the new endpoint through its Tool in the graph (`Api <-HAS_API- Tool -HAS_API-> Api`) and keeps about 24%, while keeping the learned gains elsewhere. Caveat, stated plainly: on new tools stateless BM25 is close behind (22.8%), so this shows the graph keeps the learning without losing new tools, not that it beats search by much there.
+
+The graph also helps where a new catalog starts. On tool sets never seen in training Waypoint scores 42.9% against 38.4% for the plain store, and it reaches the same accuracy with roughly 40% to 60% fewer runs on that slice (and 11% to 52% fewer over all tasks; interpolated between checkpoints, so approximate).
+
+### Live agent check
+
+A real `gpt-5.4-mini` agent on 40 held-out tasks, one run, success meaning it called every tool the task needs: all 1,419 schemas preloaded 35.0% (183,962 input tokens per task), stateless search 17.5%, Waypoint through the real `/mcp` endpoint 50.0% at 2,905 input tokens (about 1/60), cost per task $0.0028 against $0.0173 preloaded. A budget-matched flat k-NN finder ties Waypoint (52.5%), so this check shows the token and success win over today's options, not a graph advantage. Waypoint needs about one more model round trip than preloading (3.52 against 2.35).
+
+### Method notes
+
+- Both flat baselines run on Python dicts, not in HydraDB, and a parity test shows the same traversal returns identical results either way, so the familiar-task accuracy comes from how the router learns, not from the engine. HydraDB is where the graph lives in production, and the new-API result above needs the graph structure.
 - Feedback is simulated from the training labels (a finished run reports the tools it needed), the test labels never reach the graph, and COLT's tune file is never read because it is byte-identical to the test file.
 
 ## Live app and load
@@ -39,7 +59,7 @@ Metric: **Completeness@5**, the share of held-out tasks where every needed tool 
 - The live demo runs on a single 4-CPU instance. Teach and feedback writes are not persisted, so they are lost when the instance restarts and the demo returns to its baked state.
 - The documented self-host path is Render's free tier ([docs/deploy.md](docs/deploy.md), `infra/render/`): 0.1 CPU and 512 MB, a cold start of about 3 minutes kept warm by a ping every 5 minutes, and **much slower under concurrent use** (about 2 route requests per second, several seconds per query with a few users, no failed requests in testing).
 - **Load test** ([docs/load.md](docs/load.md)), same image at 2 CPU: 56.6 route requests per second at 20 users, p50 150 ms, p95 280 ms, zero failures. At 0.1 CPU (Render's free tier): 1.8 requests per second at 5 users, p50 2.3 s, zero failures.
-- Routing latency in the eval, 8 concurrent clients against one HydraDB node: p50 68.9 ms, p95 103.2 ms.
+- Routing latency in the eval, 8 concurrent clients against one HydraDB node: p50 71.7 ms, p95 169.1 ms.
 
 ## Run it
 
@@ -59,7 +79,7 @@ The first run downloads the dataset (11 MB) into `data/`. `run_eval` wipes the g
 
 ## Docs
 
-- [docs/results.md](docs/results.md): results, slices, data efficiency, what we tried that did not help, eval protocol
+- [docs/results.md](docs/results.md): results, slices, data efficiency, new-API holdout, live agent check, what we tried that did not help, eval protocol
 - [docs/api.md](docs/api.md): HTTP API and the `/mcp` endpoint
 - [docs/load.md](docs/load.md): load test profiles
 - [docs/deploy.md](docs/deploy.md) and `infra/render/`: deploy (Render free tier; Fly.io and Railway variants kept)

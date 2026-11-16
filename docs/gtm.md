@@ -14,7 +14,7 @@ A platform or AI-infra team that has already connected 5 or more MCP servers to 
 
 - Budget holder: head of AI platform or developer productivity, in the AI infra or dev-tools line, not the individual developer.
 - User: the engineers building the agent. They point their MCP client at one URL; the platform lead pays.
-- Trigger to buy: a token bill or a failure rate they can point at. On ToolBench G3 the whole catalog is 200,953 schema tokens per task and Waypoint loads 714 (281x fewer).
+- Trigger to buy: a token bill or a failure rate they can point at. On ToolBench G3 the whole catalog is 200,953 schema tokens per task and Waypoint loads 713 (282x fewer).
 
 ## Problem
 
@@ -28,7 +28,7 @@ Agents with large tool catalogs have two bad options. Preload every schema and p
 
 ## Wedge
 
-One team, one large MCP catalog, one number. Waypoint exposes an MCP endpoint (`/mcp`, tool `find_tools` returns the 5 schemas a task needs, `report_run` writes the outcome back), tested with the official MCP Python client, so any MCP-capable agent can use it without code changes. It starts at BM25 quality on day one and improves with logged runs: 26.7% to 70.3% Completeness@5 after 19,361 runs, 2.6x, with the token cut on top.
+One team, one large MCP catalog, one number. Waypoint exposes an MCP endpoint (`/mcp`, tool `find_tools` returns the 5 schemas a task needs, `report_run` writes the outcome back), tested with the official MCP Python client, so any MCP-capable agent can use it without code changes. It starts at BM25 quality on day one and improves with logged runs: 26.7% to 70.7% Completeness@5 after 19,361 runs, about 2.6x, with the token cut on top.
 
 ## Pricing (proposal, to validate with first customers)
 
@@ -39,7 +39,7 @@ One team, one large MCP catalog, one number. Waypoint exposes an MCP endpoint (`
 | Scale | $499/month flat plus usage above 1M routes | Platform teams, multiple catalogs |
 | Enterprise | Custom | VPC or BYOC, audit, SSO |
 
-Anchors from the market: Composio Standard is $18 per seat per month, Zep Flex is $125 and Flex Plus $375 per month, Cognee charges $1 per 1M tokens processed. The Team price pays for itself when tokens saved per task (200,953 minus 714 on this benchmark) times tasks per month times the model's input price exceeds it. We do not publish a dollar saving until it is computed from a customer's own volume.
+Anchors from the market: Composio Standard is $18 per seat per month, Zep Flex is $125 and Flex Plus $375 per month, Cognee charges $1 per 1M tokens processed. The Team price pays for itself when tokens saved per task (200,953 minus 713 on this benchmark) times tasks per month times the model's input price exceeds it. We do not publish a dollar saving until it is computed from a customer's own volume.
 
 ## Competition
 
@@ -48,15 +48,19 @@ Anchors from the market: Composio Standard is $18 per seat per month, Zep Flex i
 | Preload everything | All schemas in every request | Token cost and wrong-tool errors grow with catalog size; Waypoint serves 5. |
 | Anthropic and OpenAI tool search | BM25 or regex over tool descriptions, deferred loading | Stateless, per vendor, no memory of what worked. This is our measured baseline (26.7%). |
 | Composio, Docker MCP gateway | Catalog, auth and dynamic discovery | Complementary: they host tools, Waypoint decides which ones to serve. |
-| Plain store of past runs | Remembers past runs without a graph | A strong control. Copying the nearest past run reaches 60.3%; a budget-matched flat k-NN (same scoring and candidate budget as Waypoint, in plain dicts) reaches 69.9% against Waypoint's 70.3%. |
+| Plain store of past runs | Remembers past runs without a graph | A strong control. Copying the nearest past run reaches 60.3%; a budget-matched flat k-NN (same scoring and candidate budget as Waypoint, in plain dicts) reaches 69.9% against Waypoint's 70.7%. |
 | Zep, Cognee, Mem0 | Agent memory (facts, user history) | Memory of what was said; Waypoint stores which tools worked for which sub-requests and routes on it. |
 
 ## What is the learning loop and what is the graph
 
-Most of the gain over BM25 comes from the learning loop: logging which tools finished runs needed and routing on that. A budget-matched plain store gets almost all of it (69.9% against 70.3%, level on tool sets seen in training at 78.5% against 78.2%). We say so because the eval shows it.
+Most of the gain over BM25 comes from the learning loop: logging which tools finished runs needed and routing on that. On familiar tasks a budget-matched plain store gets almost all of it (69.9% against 70.7%, level on tool sets seen in training at 78.5% against 78.2%). We say so because the eval shows it.
 
-What the graph structure adds is concentrated where a new customer lives. On tool sets never seen in training, Waypoint scores 41.5% against 38.4% for the plain store, and it learns new combinations faster: it reaches 30% on those tasks after about 4,600 runs where the plain store needs about 8,800 (roughly 28% to 48% fewer runs across the levels measured; 10% to 38% fewer over all tasks; interpolated between checkpoints, so approximate). A new customer's catalog starts with few runs, so this is the number that matters for adoption. A `Clause -NEEDS-> Api` edge carries only the tools one sub-request needed, so Waypoint can assemble a new tool set from parts of different past runs, where a whole stored run drags in tools the new task does not need. The gain is real but modest.
+What the graph adds is exactly what a growing customer catalog needs:
+
+- **New tools after launch.** With 10% of the catalog held out of every training run, a plain store of past runs scores 1.8% on tasks that need a new tool, because it has nothing to copy for a tool nobody has used. Waypoint holds 24.2% by following `Api <-HAS_API- Tool -HAS_API-> Api` from a learned endpoint to its untried siblings, and beats the plain store by about 6 points over all tasks (60.9% against 55.1%). On those new tools stateless BM25 is close behind (22.8%), so the claim is that the graph keeps the learned gains without losing new tools, not that it beats search by much.
+- **Few runs.** A new customer's catalog starts with few runs. On tool sets never seen in training Waypoint scores 42.9% against 38.4% for the plain store and reaches the same accuracy with roughly 40% to 60% fewer runs (11% to 52% over all tasks; interpolated between checkpoints, so approximate).
+- **Live agent check.** A real gpt-5.4-mini agent on 40 held-out tasks: 50.0% success with Waypoint at 2,905 input tokens per task, against 35.0% preloaded at 183,962 tokens and 17.5% with stateless search, at $0.0028 per task against $0.0173 preloaded. A flat k-NN finder ties Waypoint (52.5%), and Waypoint needs about one more model round trip than preloading (3.52 against 2.35), so this check shows the token and success win over today's options, not a graph advantage.
 
 ## Why it needs HydraDB
 
-The learned state lives on graph edges that the feedback loop rewrites after every run, and routing is a multi-hop traversal (task clauses to similar past clauses to the tools they needed) run live inside self-hosted HydraDB. The same traversal on Python dicts returns exactly what HydraDB returns (a parity test asserts it), so we do not claim the engine makes the accuracy higher. HydraDB is where the graph lives in production: persistent, shared by every agent that routes through it, cheap to keep on object storage as runs accumulate, and queryable for the "why this tool" view. We run the open-source engine self-hosted, as the event requires.
+The learned state lives on graph edges that the feedback loop rewrites after every run, and routing is a multi-hop traversal (task clauses to similar past clauses to the tools they needed) run live inside self-hosted HydraDB. The same traversal on Python dicts returns exactly what HydraDB returns (a parity test asserts it), so the familiar-task accuracy comes from how the router learns, not from the engine. The new-tools result needs the graph structure, and HydraDB is where the graph lives in production: persistent, shared by every agent that routes through it, cheap to keep on object storage as runs accumulate, and queryable for the "why this tool" view. We run the open-source engine self-hosted, as the event requires.
