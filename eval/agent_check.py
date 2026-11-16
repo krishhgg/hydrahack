@@ -1,12 +1,19 @@
 """Live agent check: does Waypoint cut an agent's tokens and round trips without hurting success?
 
 A small real-agent run on 40 held-out ToolBench G3 tasks (COLT test split, each needing at least
-two tools). The same OpenAI model, system prompt and mocked call_api are used in three
+two tools). The same OpenAI model, system prompt and mocked call_api are used in four
 conditions that differ only in how the agent finds tools:
 
   catalog   all 1,419 tool schemas are preloaded in the system prompt; the agent only has call_api
   search    search_tools(query): stateless BM25, top 5 schemas (Router(..., learn=False))
+  flat_knn  find_tools(task): the budget-matched learned control, eval.run_eval.flat_knn over a
+            key-value memory of all 19,361 training runs, Waypoint's weights and candidate counts,
+            no graph and no network call, top 5 schemas
   waypoint  find_tools(task): the real POST /mcp endpoint of a running Waypoint app, k = 5
+
+Stateless search has no feedback at all, so it shows what a tool-search feature gives without
+learning. flat_knn is the budget-matched learned control: it gets the same training runs, the same
+scoring weights and the same k as Waypoint, so Waypoint vs flat_knn isolates what the graph adds.
 
 Execution is mocked: call_api returns a canned success. Test labels are used only for scoring;
 nothing is written to the graph (no /api/feedback, no report_run).
@@ -34,9 +41,11 @@ from pathlib import Path
 
 import httpx
 
+from eval.run_eval import flat_knn
 from hydrahack.data import DATA_DIR, load
 from hydrahack.mcp import tool_schema
-from hydrahack.router import Router
+from hydrahack.router import Params, Router
+from hydrahack.text import BM25
 
 RESULTS = Path(__file__).resolve().parent / "results"
 CACHE = DATA_DIR / "llm_cache" / "agent_check"
@@ -49,7 +58,7 @@ SAMPLE_SIZE = 40
 K = 5
 MAX_MODEL_CALLS = 12
 MAX_OUTPUT_TOKENS = 2000
-CONDITIONS = ["catalog", "search", "waypoint"]
+CONDITIONS = ["catalog", "search", "flat_knn", "waypoint"]
 # USD per 1M tokens, from https://developers.openai.com/api/docs/pricing (standard tier)
 PRICES = {"input": 0.75, "cached_input": 0.075, "output": 4.50}
 CALL_API_RESULT = {"status": "success", "message": "API call executed", "data": {"ok": True}}
@@ -78,6 +87,7 @@ ACCESS = {
         "like, then call the APIs you found with call_api."
     ),
 }
+ACCESS["flat_knn"] = ACCESS["waypoint"]
 CALL_API = {
     "type": "function",
     "function": {
@@ -120,7 +130,7 @@ FIND_TOOLS = {
         },
     },
 }
-FINDERS = {"search": SEARCH_TOOLS, "waypoint": FIND_TOOLS}
+FINDERS = {"search": SEARCH_TOOLS, "flat_knn": FIND_TOOLS, "waypoint": FIND_TOOLS}
 
 
 def cached(key: dict, refresh: bool, produce):
@@ -159,6 +169,11 @@ class Agent:
         self.ds, self.refresh = ds, refresh
         self.apis = {a.idx: a for a in ds.apis}
         self.stateless = Router(ds.apis, None, learn=False)
+        self.params = Params()
+        self.memory = {int(q): ds.train[q] for q in ds.stream_order}
+        self.memory_index = BM25()
+        for q in ds.stream_order:
+            self.memory_index.add(int(q), ds.queries[q])
         self.catalog = catalog_text(ds.apis)
         self.http = httpx.Client(timeout=180)
         self.api_key = os.environ["OPENAI_API_KEY"]
@@ -196,6 +211,21 @@ class Agent:
                 {"search": text, "k": K},
                 self.refresh,
                 lambda: [tool_schema(self.apis[a]) for a in self.stateless.route(text, K).tools],
+            )
+        elif condition == "flat_knn":
+            found, seconds = cached(
+                {"flat_knn": text, "k": K},
+                self.refresh,
+                lambda: [
+                    tool_schema(self.apis[a])
+                    for a in flat_knn(
+                        self.memory,
+                        self.memory_index,
+                        self.stateless.api_index,
+                        self.params,
+                        text,
+                    )
+                ],
             )
         else:
 
@@ -387,14 +417,16 @@ def main() -> None:
             sys.exit(f"budget exceeded: {spent:.2f} USD > {args.budget:.2f} USD")
 
     paired = {}
-    if "waypoint" in out and "search" in out:
+    for other in ("search", "flat_knn", "catalog"):
+        if "waypoint" not in out or other not in out:
+            continue
         w = {r["qid"]: r["success"] for r in out["waypoint"]["tasks"]}
-        s = {r["qid"]: r["success"] for r in out["search"]["tasks"]}
-        paired["waypoint_vs_search_success"] = {
-            "both": sum(w[q] and s[q] for q in w),
-            "waypoint_only": sum(w[q] and not s[q] for q in w),
-            "search_only": sum(s[q] and not w[q] for q in w),
-            "neither": sum(not w[q] and not s[q] for q in w),
+        o = {r["qid"]: r["success"] for r in out[other]["tasks"]}
+        paired[f"waypoint_vs_{other}_success"] = {
+            "both": sum(w[q] and o[q] for q in w),
+            "waypoint_only": sum(w[q] and not o[q] for q in w),
+            f"{other}_only": sum(o[q] and not w[q] for q in w),
+            "neither": sum(not w[q] and not o[q] for q in w),
         }
     result = {
         "generated": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -415,7 +447,7 @@ def main() -> None:
         "metric_definitions": {
             "success": "every gold api_id was passed to call_api",
             "precision": "distinct gold api_ids called / all call_api calls (0 when none)",
-            "gold_offered": "share of gold ids the finder ever returned (search, waypoint only)",
+            "gold_offered": "share of gold ids the finder ever returned (finder conditions only)",
             "tool_calls": "finder calls + call_api calls",
             "wall_seconds": "sum of model and finder call latencies as first measured",
             "tokens": "OpenAI usage fields summed over the episode's model calls",

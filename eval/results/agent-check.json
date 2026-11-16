@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-16T05:28:25+00:00",
+ "generated": "2026-11-16T05:35:36+00:00",
  "command": "uv run python -m eval.agent_check",
  "model": "gpt-5.4-mini",
  "reasoning_effort": "none",
@@ -62,7 +62,7 @@
  "metric_definitions": {
   "success": "every gold api_id was passed to call_api",
   "precision": "distinct gold api_ids called / all call_api calls (0 when none)",
-  "gold_offered": "share of gold ids the finder ever returned (search, waypoint only)",
+  "gold_offered": "share of gold ids the finder ever returned (finder conditions only)",
   "tool_calls": "finder calls + call_api calls",
   "wall_seconds": "sum of model and finder call latencies as first measured",
   "tokens": "OpenAI usage fields summed over the episode's model calls"
@@ -79,12 +79,24 @@
   },
   "learned_tasks": 19361
  },
- "total_spend_usd": 0.921,
+ "total_spend_usd": 1.0217,
  "paired": {
   "waypoint_vs_search_success": {
    "both": 6,
    "waypoint_only": 14,
    "search_only": 1,
+   "neither": 19
+  },
+  "waypoint_vs_flat_knn_success": {
+   "both": 20,
+   "waypoint_only": 0,
+   "flat_knn_only": 1,
+   "neither": 19
+  },
+  "waypoint_vs_catalog_success": {
+   "both": 13,
+   "waypoint_only": 7,
+   "catalog_only": 1,
    "neither": 19
   }
  },
@@ -180,6 +192,52 @@
    "hit_cap": 0,
    "spend_usd": 0.1201,
    "spend_usd_per_task": 0.003
+  },
+  "flat_knn": {
+   "tasks": 40,
+   "success_rate": 0.525,
+   "successes": 21,
+   "mean_precision": 0.685,
+   "mean_gold_offered": 0.8271,
+   "input_tokens": {
+    "mean": 2704.1,
+    "total": 108162
+   },
+   "cached_tokens": {
+    "mean": 211.2,
+    "total": 8448
+   },
+   "uncached_input_tokens": {
+    "mean": 2492.8,
+    "total": 99714
+   },
+   "output_tokens": {
+    "mean": 140.7,
+    "total": 5626
+   },
+   "round_trips": {
+    "mean": 3.38,
+    "total": 135
+   },
+   "tool_calls": {
+    "mean": 3.77,
+    "total": 151
+   },
+   "finder_calls": {
+    "mean": 1.02,
+    "total": 41
+   },
+   "api_calls": {
+    "mean": 2.75,
+    "total": 110
+   },
+   "wall_seconds": {
+    "mean": 2.6,
+    "total": 102.2
+   },
+   "hit_cap": 0,
+   "spend_usd": 0.1007,
+   "spend_usd_per_task": 0.00252
   },
   "waypoint": {
    "tasks": 40,
@@ -7240,6 +7298,3567 @@
     "gold_offered": 1.0,
     "tool_calls": 6,
     "cost_usd": 0.00324975
+   }
+  ],
+  "flat_knn": [
+   {
+    "qid": "13397",
+    "task": "I'm a finance student and I'm working on a research project about different assets. Can you provide me with the details of all active crypto assets? Additionally, fetch me the historical rates for BTC to USD on November 30, 2021.",
+    "gold": [
+     271,
+     311
+    ],
+    "calls": [
+     311,
+     271
+    ],
+    "finder_calls": [
+     "Provide details of all active crypto assets, and fetch historical rates for BTC to USD on November 30, 2021."
+    ],
+    "offered": [
+     271,
+     311,
+     273,
+     287,
+     350
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Provide details of all active crypto assets, and fetch historical rates for BTC to USD on November 30, 2021."
+        },
+        "result": "{\"tools\":[{\"id\":271,\"name\":\"History\",\"server\":\"CurrencyAPI.net\",\"category\":\"Financial\",\"description\":\"Display the currency conversions historical rates for a particular day\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"date\":{\"type\":\"string\",\"description\":\"Display the single date you wish to get th"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 311,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 271,
+         "arguments": {
+          "date": "2021-11-30",
+          "base": "BTC"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 3634,
+    "output_tokens": 100,
+    "cached_tokens": 1024,
+    "round_trips": 4,
+    "seconds": 4.1210716000000005,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 3,
+    "cost_usd": 0.0024843
+   },
+   {
+    "qid": "6133",
+    "task": "I want to surprise my parents with a vacation to a beautiful beach destination. Can you recommend some popular beach locations and provide me with images of those beaches? Also, suggest some hotels with beachfront views and all-inclusive packages.",
+    "gold": [
+     118,
+     120,
+     121
+    ],
+    "calls": [
+     529,
+     120,
+     529
+    ],
+    "finder_calls": [
+     "Recommend popular beach vacation destinations, provide images of those beaches, and suggest hotels with beachfront views and all-inclusive packages."
+    ],
+    "offered": [
+     120,
+     529,
+     121,
+     651,
+     644
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Recommend popular beach vacation destinations, provide images of those beaches, and suggest hotels with beachfront views and all-inclusive packages."
+        },
+        "result": "{\"tools\":[{\"id\":120,\"name\":\"Image Search\",\"server\":\"Bing Image Search\",\"category\":\"Media\",\"description\":\"Get relevant images for a given query.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"q\":{\"type\":\"string\",\"description\":\"The user's search query string\"}},\"required\":[\"q\"]}},{\"id\":529,\"name\":\"Ent"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 529,
+         "arguments": {
+          "q": "popular beach vacation destinations beautiful beaches all-inclusive beachfront hotels"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 120,
+         "arguments": {
+          "q": "beautiful beach destination popular beach locations"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 529,
+         "arguments": {
+          "q": "all-inclusive beachfront hotels popular beach destinations"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 3469,
+    "output_tokens": 149,
+    "cached_tokens": 1024,
+    "round_trips": 4,
+    "seconds": 3.0520004639999847,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 1,
+    "precision": 0.3333333333333333,
+    "gold_offered": 0.6666666666666666,
+    "tool_calls": 4,
+    "cost_usd": 0.00258105
+   },
+   {
+    "qid": "16229",
+    "task": "I'm planning a road trip with my friends and we want to discover new music along the way. Can you suggest some tracks from different genres that we can add to our playlist? Additionally, we would like to know more about the artists behind these tracks, such as their profiles and other popular tracks they have released.",
+    "gold": [
+     75,
+     81,
+     82,
+     92
+    ],
+    "calls": [
+     75,
+     75,
+     106
+    ],
+    "finder_calls": [
+     "Suggest tracks from different genres for a road trip playlist, and provide artist information including artist profiles and other popular tracks by those artists."
+    ],
+    "offered": [
+     81,
+     76,
+     75,
+     106,
+     96
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Suggest tracks from different genres for a road trip playlist, and provide artist information including artist profiles and other popular tracks by those artists."
+        },
+        "result": "{\"tools\":[{\"id\":81,\"name\":\"/user/info\",\"server\":\"Soundcloud\",\"category\":\"Social\",\"description\":\"Get basic user info\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"profile_url\":{\"type\":\"string\",\"description\":\"\"}},\"required\":[\"profile_url\"]}},{\"id\":76,\"name\":\"Infos\",\"server\":\"Deezer\",\"category\":\"Enter"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 75,
+         "arguments": {
+          "type": "track",
+          "query": "road trip songs different genres"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 75,
+         "arguments": {
+          "type": "user",
+          "query": "popular artists indie rock electronic hip hop pop"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 106,
+         "arguments": {
+          "id": "artist-id-placeholder"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 3145,
+    "output_tokens": 153,
+    "cached_tokens": 0,
+    "round_trips": 4,
+    "seconds": 3.1869623740000037,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 1,
+    "precision": 0.3333333333333333,
+    "gold_offered": 0.5,
+    "tool_calls": 4,
+    "cost_usd": 0.00304725
+   },
+   {
+    "qid": "1919",
+    "task": "Retrieve the editorial object with the Deezer id '24680'. Also, provide a fact about the number 500 and search for Chuck Norris jokes about animals.",
+    "gold": [
+     46,
+     77,
+     257
+    ],
+    "calls": [
+     77,
+     46,
+     257
+    ],
+    "finder_calls": [
+     "Retrieve the editorial object with the Deezer id '24680'. Also, provide a fact about the number 500 and search for Chuck Norris jokes about animals."
+    ],
+    "offered": [
+     77,
+     257,
+     46,
+     43,
+     48
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Retrieve the editorial object with the Deezer id '24680'. Also, provide a fact about the number 500 and search for Chuck Norris jokes about animals."
+        },
+        "result": "{\"tools\":[{\"id\":77,\"name\":\"Editorial\",\"server\":\"Deezer\",\"category\":\"Entertainment\",\"description\":\"An editorial object\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The editorial's Deezer id\"}},\"required\":[\"id\"]}},{\"id\":257,\"name\":\"/jokes/search\",\"server\":\"Chuck N"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 77,
+         "arguments": {
+          "id": "24680"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 46,
+         "arguments": {
+          "number": "500"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 257,
+         "arguments": {
+          "query": "animals"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 1923,
+    "output_tokens": 136,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.181081454000015,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 3,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 4,
+    "cost_usd": 0.00205425
+   },
+   {
+    "qid": "3049",
+    "task": "I'm a music journalist and I need to gather information about the latest releases and news in the music industry. Can you fetch the latest releases of multiple artists using the Shazam API? Additionally, provide me with some news articles about music using the Web Search API to stay updated.",
+    "gold": [
+     2,
+     97
+    ],
+    "calls": [
+     97,
+     97,
+     97,
+     2
+    ],
+    "finder_calls": [
+     "Fetch the latest releases of multiple artists using the Shazam API, and provide news articles about music using the Web Search API."
+    ],
+    "offered": [
+     2,
+     97,
+     120,
+     300,
+     103
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Fetch the latest releases of multiple artists using the Shazam API, and provide news articles about music using the Web Search API."
+        },
+        "result": "{\"tools\":[{\"id\":2,\"name\":\"newsSearch\",\"server\":\"Web Search\",\"category\":\"Data\",\"description\":\"Get news articles relevant for a given query.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"pageSize\":{\"type\":\"number\",\"description\":\"The number of items per page. The maximum value is 50.\"},\"autoCorrect\":{"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 97,
+         "arguments": {
+          "id": "Adele"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 97,
+         "arguments": {
+          "id": "Taylor Swift"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 97,
+         "arguments": {
+          "id": "Drake"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 2,
+         "arguments": {
+          "q": "music industry latest news",
+          "pageSize": 5,
+          "autoCorrect": true,
+          "pageNumber": 1
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2609,
+    "output_tokens": 170,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.5379110429999514,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 0.5,
+    "gold_offered": 1.0,
+    "tool_calls": 5,
+    "cost_usd": 0.00272175
+   },
+   {
+    "qid": "21892",
+    "task": "I need to find images of famous landmarks in Paris and fetch news articles about recent scientific discoveries. Additionally, suggest some popular tourist attractions in Rome.",
+    "gold": [
+     2,
+     120,
+     529
+    ],
+    "calls": [
+     120,
+     2,
+     529
+    ],
+    "finder_calls": [
+     "Find APIs for: searching images of famous landmarks in Paris, fetching news articles about recent scientific discoveries, and suggesting popular tourist attractions in Rome."
+    ],
+    "offered": [
+     2,
+     120,
+     121,
+     529,
+     300
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Find APIs for: searching images of famous landmarks in Paris, fetching news articles about recent scientific discoveries, and suggesting popular tourist attractions in Rome."
+        },
+        "result": "{\"tools\":[{\"id\":2,\"name\":\"newsSearch\",\"server\":\"Web Search\",\"category\":\"Data\",\"description\":\"Get news articles relevant for a given query.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"pageSize\":{\"type\":\"number\",\"description\":\"The number of items per page. The maximum value is 50.\"},\"autoCorrect\":{"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 120,
+         "arguments": {
+          "q": "famous landmarks in Paris"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 2,
+         "arguments": {
+          "q": "recent scientific discoveries",
+          "pageSize": 10,
+          "autoCorrect": true,
+          "pageNumber": 1
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 529,
+         "arguments": {
+          "q": "popular tourist attractions in Rome"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2202,
+    "output_tokens": 156,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.066560211999949,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 3,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 4,
+    "cost_usd": 0.0023535
+   },
+   {
+    "qid": "3921",
+    "task": "I'm planning a hiking trip with my friends and we want to minimize our carbon footprint. Can you calculate the CO2e emissions for our travel to the hiking location? We'll be using a medium-sized hybrid car. Also, can you provide me with the latest medical guidelines for outdoor activities and hiking?",
+    "gold": [
+     390,
+     393
+    ],
+    "calls": [
+     390,
+     393
+    ],
+    "finder_calls": [
+     "Calculate CO2e emissions for travel to a hiking location using a medium-sized hybrid car, and provide the latest medical guidelines for outdoor activities and hiking."
+    ],
+    "offered": [
+     390,
+     393,
+     388,
+     389,
+     395
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Calculate CO2e emissions for travel to a hiking location using a medium-sized hybrid car, and provide the latest medical guidelines for outdoor activities and hiking."
+        },
+        "result": "{\"tools\":[{\"id\":390,\"name\":\"CarbonFootprintFromCarTravel\",\"server\":\"CarbonFootprint\",\"category\":\"Science\",\"description\":\"Returns the CO2e in Kg from a travel by car\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"distance\":{\"type\":\"string\",\"description\":\"The distance in KM.\"},\"vehicle\":{\"type\":\"strin"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 390,
+         "arguments": {
+          "distance": "100",
+          "vehicle": "MediumHybridCar"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 393,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 3392,
+    "output_tokens": 102,
+    "cached_tokens": 0,
+    "round_trips": 4,
+    "seconds": 2.812224102999963,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 3,
+    "cost_usd": 0.003003
+   },
+   {
+    "qid": "14985",
+    "task": "I'm a fashion enthusiast and I want to stay updated with the latest trends. Fetch me the hashtag metadata for #fashiontrends, and also provide me with the current user feed of a popular fashion influencer. Additionally, show me the product details for designer handbags available at Target stores.",
+    "gold": [
+     62,
+     63,
+     64
+    ],
+    "calls": [
+     62,
+     63,
+     64
+    ],
+    "finder_calls": [
+     "Fetch hashtag metadata for #fashiontrends, get the current user feed of a popular fashion influencer, and show product details for designer handbags available at Target stores."
+    ],
+    "offered": [
+     63,
+     64,
+     62,
+     65,
+     61
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Fetch hashtag metadata for #fashiontrends, get the current user feed of a popular fashion influencer, and show product details for designer handbags available at Target stores."
+        },
+        "result": "{\"tools\":[{\"id\":63,\"name\":\"User feed (Video posts)\",\"server\":\"Social Media Data TT\",\"category\":\"Social\",\"description\":\"Get current user feed. \\n\\n- Before testing don't forget to fill out the username **OR** sec_uid inputs\\n- Endpoint will return an array of objects with very useful metadata. \\n- Di"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 62,
+         "arguments": {
+          "hashtag": "fashiontrends"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 63,
+         "arguments": {
+          "username": "fashion influencer"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 64,
+         "arguments": {
+          "store_id": 0,
+          "tcin": "designer handbags"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2535,
+    "output_tokens": 146,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.215790079000012,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 3,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 4,
+    "cost_usd": 0.00255825
+   },
+   {
+    "qid": "2352",
+    "task": "I'm looking for the latest trending memes on Reddit. Get me the trending memes from the 'memes' subreddit and provide me with the details of the most recent post. Additionally, search for comments related to that post and display them.",
+    "gold": [
+     133,
+     135,
+     145,
+     817
+    ],
+    "calls": [
+     822,
+     137,
+     822,
+     817,
+     133
+    ],
+    "finder_calls": [
+     "Get latest trending memes from the Reddit 'memes' subreddit, provide details of the most recent post, and search/display comments related to that post."
+    ],
+    "offered": [
+     817,
+     133,
+     137,
+     145,
+     822
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Get latest trending memes from the Reddit 'memes' subreddit, provide details of the most recent post, and search/display comments related to that post."
+        },
+        "result": "{\"tools\":[{\"id\":817,\"name\":\"Post Details\",\"server\":\"Reddit\",\"category\":\"Social\",\"description\":\"Post Details\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"post_id\":{\"type\":\"string\",\"description\":\"\"}},\"required\":[\"post_id\"]}},{\"id\":133,\"name\":\"Comment search\",\"server\":\"Socialgrep\",\"category\":\"Data\",\""
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 822,
+         "arguments": {
+          "subreddit": "reddit.com/r/memes",
+          "sort": "hot"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 137,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 822,
+         "arguments": {
+          "subreddit": "reddit.com/r/memes",
+          "sort": "new"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 817,
+         "arguments": {
+          "post_id": "latest_post_from_r_memes"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 133,
+         "arguments": {
+          "query": "/r/memes, latest_post_from_r_memes"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 5487,
+    "output_tokens": 216,
+    "cached_tokens": 1024,
+    "round_trips": 6,
+    "seconds": 5.783715745999999,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 2,
+    "precision": 0.4,
+    "gold_offered": 0.75,
+    "tool_calls": 6,
+    "cost_usd": 0.00439605
+   },
+   {
+    "qid": "20880",
+    "task": "I want to convert 50 USD to GBP using CurrencyAPI.net's Convert API. Additionally, retrieve the details of an individual asset with the UUID 'f1ff77b6-3ab4-4719-9ded-2fc7e71cff1f' using BraveNewCoin's AssetById API.",
+    "gold": [
+     270,
+     286
+    ],
+    "calls": [
+     270,
+     286
+    ],
+    "finder_calls": [
+     "Convert 50 USD to GBP using CurrencyAPI.net's Convert API. Additionally, retrieve the details of an individual asset with the UUID 'f1ff77b6-3ab4-4719-9ded-2fc7e71cff1f' using BraveNewCoin's AssetById API."
+    ],
+    "offered": [
+     270,
+     286,
+     312,
+     273,
+     350
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Convert 50 USD to GBP using CurrencyAPI.net's Convert API. Additionally, retrieve the details of an individual asset with the UUID 'f1ff77b6-3ab4-4719-9ded-2fc7e71cff1f' using BraveNewCoin's AssetById API."
+        },
+        "result": "{\"tools\":[{\"id\":270,\"name\":\"Convert\",\"server\":\"CurrencyAPI.net\",\"category\":\"Financial\",\"description\":\"Convert a custom amount value from one currency to another\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"to\":{\"type\":\"string\",\"description\":\"Currency code of the currency you want to convert to. Eg"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 270,
+         "arguments": {
+          "from": "USD",
+          "to": "GBP",
+          "amount": "50"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 286,
+         "arguments": {
+          "id": "f1ff77b6-3ab4-4719-9ded-2fc7e71cff1f"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2693,
+    "output_tokens": 177,
+    "cached_tokens": 1024,
+    "round_trips": 3,
+    "seconds": 2.3472137650000207,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 3,
+    "cost_usd": 0.0021250500000000003
+   },
+   {
+    "qid": "8844",
+    "task": "I'm planning a family vacation and I want to make it eco-friendly. Can you recommend sustainable tourism options and provide guidelines for traveling responsibly with kids? Also, suggest some healthcare facilities in the vacation destination.",
+    "gold": [
+     393,
+     394
+    ],
+    "calls": [
+     393
+    ],
+    "finder_calls": [
+     "Recommend sustainable tourism options and guidelines for traveling responsibly with kids, and suggest healthcare facilities in the vacation destination. The destination is not specified, so likely need a general travel/sustainability information API and a healthcare/facility lookup API if available."
+    ],
+    "offered": [
+     393,
+     394,
+     388,
+     605,
+     390
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Recommend sustainable tourism options and guidelines for traveling responsibly with kids, and suggest healthcare facilities in the vacation destination. The destination is not specified, so likely need a general travel/sustainability information API and a healthcare/facility lookup API if available."
+        },
+        "result": "{\"tools\":[{\"id\":393,\"name\":\"all\",\"server\":\"GetGuidelines\",\"category\":\"Medical\",\"description\":\"All guidelines\",\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}},{\"id\":394,\"name\":\"Healthcare mailing\",\"server\":\"Healthcaremailing\",\"category\":\"Business\",\"description\":\"Healthcare mailing, a d"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 393,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2079,
+    "output_tokens": 91,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.2645888139999713,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 1,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 2,
+    "cost_usd": 0.00196875
+   },
+   {
+    "qid": "1562",
+    "task": "I'm a big fan of live music and I want to attend concerts in different cities. Can you provide me with a list of upcoming concerts by popular artists? Additionally, suggest some local restaurants near the concert venues where I can grab a bite before or after the show.",
+    "gold": [
+     81,
+     95,
+     342
+    ],
+    "calls": [
+     688,
+     325,
+     688
+    ],
+    "finder_calls": [
+     "Provide a list of upcoming concerts by popular artists in different cities, and suggest local restaurants near the concert venues where the user can eat before or after the show."
+    ],
+    "offered": [
+     688,
+     342,
+     339,
+     917,
+     325
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Provide a list of upcoming concerts by popular artists in different cities, and suggest local restaurants near the concert venues where the user can eat before or after the show."
+        },
+        "result": "{\"tools\":[{\"id\":688,\"name\":\"Concerts\",\"server\":\"Spotify\",\"category\":\"Music\",\"description\":\"Concerts\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"gl\":{\"type\":\"string\",\"description\":\"\"}},\"required\":[\"gl\"]}},{\"id\":342,\"name\":\"artists.search\",\"server\":\"SongMeanings\",\"category\":\"Entertainment\",\"descrip"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 688,
+         "arguments": {
+          "gl": "US"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 325,
+         "arguments": {
+          "locationid": "+40.7128-074.0060",
+          "radius": "100"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 688,
+         "arguments": {
+          "gl": "GB"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 3140,
+    "output_tokens": 151,
+    "cached_tokens": 0,
+    "round_trips": 4,
+    "seconds": 2.674452829000046,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 0,
+    "precision": 0.0,
+    "gold_offered": 0.3333333333333333,
+    "tool_calls": 4,
+    "cost_usd": 0.0030345
+   },
+   {
+    "qid": "3586",
+    "task": "I'm starting a new company and need some motivation. Can you suggest funny Chuck Norris jokes to boost morale in the office? Also, find a playlist on Deezer with energetic music to keep everyone motivated.",
+    "gold": [
+     43,
+     77
+    ],
+    "calls": [
+     43,
+     257,
+     82
+    ],
+    "finder_calls": [
+     "Suggest funny Chuck Norris jokes to boost morale in the office, and find a playlist on Deezer with energetic music to keep everyone motivated."
+    ],
+    "offered": [
+     506,
+     43,
+     82,
+     403,
+     257
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Suggest funny Chuck Norris jokes to boost morale in the office, and find a playlist on Deezer with energetic music to keep everyone motivated."
+        },
+        "result": "{\"tools\":[{\"id\":506,\"name\":\"Playlist\",\"server\":\"Deezer\",\"category\":\"Entertainment\",\"description\":\"A playlist object\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The playlist's Deezer id\"}},\"required\":[\"id\"]}},{\"id\":43,\"name\":\"/jokes/random\",\"server\":\"Chuck Norri"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 43,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 257,
+         "arguments": {
+          "query": "office morale funny Chuck Norris jokes"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 82,
+         "arguments": {
+          "q": "energetic motivation playlist"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 1949,
+    "output_tokens": 137,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.091096448000002,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 1,
+    "precision": 0.3333333333333333,
+    "gold_offered": 0.5,
+    "tool_calls": 4,
+    "cost_usd": 0.00207825
+   },
+   {
+    "qid": "17949",
+    "task": "I'm planning a family game night and I want to include some funny jokes to make it more entertaining. Can you suggest a random manatee joke that we can share during the games? Additionally, find some popular joke categories that we can explore for more jokes. Lastly, recommend some local board game stores where we can purchase new games.",
+    "gold": [
+     248,
+     259,
+     887
+    ],
+    "calls": [
+     248,
+     887,
+     665
+    ],
+    "finder_calls": [
+     "User wants: 1) a random manatee joke, 2) popular joke categories to explore, 3) local board game stores where they can purchase new games. Need APIs for joke generation/categories and local store search, likely location-based. Find candidate APIs."
+    ],
+    "offered": [
+     248,
+     887,
+     262,
+     259,
+     665
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "User wants: 1) a random manatee joke, 2) popular joke categories to explore, 3) local board game stores where they can purchase new games. Need APIs for joke generation/categories and local store search, likely location-based. Find candidate APIs."
+        },
+        "result": "{\"tools\":[{\"id\":248,\"name\":\"random\",\"server\":\"manatee jokes\",\"category\":\"Science\",\"description\":\"retrieves a random manatee joke\",\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}},{\"id\":887,\"name\":\"Get Categories of Jokes\",\"server\":\"World of Jokes\",\"category\":\"Entertainment\",\"descriptio"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 248,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 887,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 665,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2058,
+    "output_tokens": 151,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.1802130479999775,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 2,
+    "precision": 0.6666666666666666,
+    "gold_offered": 1.0,
+    "tool_calls": 4,
+    "cost_usd": 0.002223
+   },
+   {
+    "qid": "17269",
+    "task": "I'm planning a surprise birthday party for my sister and I need some unique decoration ideas. Show me images of creative birthday decorations. Also, provide me with the translation of 'happy birthday' in different languages.",
+    "gold": [
+     118,
+     119,
+     120,
+     121
+    ],
+    "calls": [
+     120,
+     451
+    ],
+    "finder_calls": [
+     "Show images of creative birthday decorations and provide translations of 'happy birthday' in different languages."
+    ],
+    "offered": [
+     121,
+     451,
+     120,
+     119,
+     118
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Show images of creative birthday decorations and provide translations of 'happy birthday' in different languages."
+        },
+        "result": "{\"tools\":[{\"id\":121,\"name\":\"Trending\",\"server\":\"Bing Image Search\",\"category\":\"Media\",\"description\":\"Get currently trending images.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}},{\"id\":451,\"name\":\"Languages\",\"server\":\"Microsoft Translator Text\",\"category\":\"Translation\",\"description\""
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 120,
+         "arguments": {
+          "q": "creative birthday decorations"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 451,
+         "arguments": {
+          "api-version": "3.0"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 1885,
+    "output_tokens": 105,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 1.9520347360000514,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 1,
+    "precision": 0.5,
+    "gold_offered": 1.0,
+    "tool_calls": 3,
+    "cost_usd": 0.00188625
+   },
+   {
+    "qid": "2858",
+    "task": "I'm organizing a music festival and I need to book some artists. Can you fetch me the future events of a popular artist on Shazam? Also, provide me with the top artists in the Duo/Group category for the previous year according to Billboard-API. Additionally, give me the details of a playlist on Soundcloud so I can listen to the songs of these artists.",
+    "gold": [
+     96,
+     100,
+     763
+    ],
+    "calls": [
+     763,
+     96,
+     104
+    ],
+    "finder_calls": [
+     "Fetch future events of a popular artist on Shazam; provide top artists in the Duo/Group category for the previous year according to Billboard-API; give details of a playlist on Soundcloud."
+    ],
+    "offered": [
+     763,
+     96,
+     100,
+     74,
+     104
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Fetch future events of a popular artist on Shazam; provide top artists in the Duo/Group category for the previous year according to Billboard-API; give details of a playlist on Soundcloud."
+        },
+        "result": "{\"tools\":[{\"id\":763,\"name\":\"Top Artists - Duo/Group\",\"server\":\"Billboard-API\",\"category\":\"Music\",\"description\":\"Provide the YEAR-END Top Artists - Duo/Group chart information\\n\\nIf `year` is not supplied, will default to last year.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}},{\"id"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 763,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 96,
+         "arguments": {
+          "playlist_url": "https://soundcloud.com/playlist/example"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 104,
+         "arguments": {
+          "id": "popular-artist"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2383,
+    "output_tokens": 150,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 1.8881203870000007,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 2,
+    "precision": 0.6666666666666666,
+    "gold_offered": 1.0,
+    "tool_calls": 4,
+    "cost_usd": 0.00246225
+   },
+   {
+    "qid": "10001",
+    "task": "I'm planning a hiking trip in the Swiss Alps and I need to obtain the geocoordinates for a specific address: 505 Howard St, San Francisco. Can you help me with this? Additionally, I would like to know the current time in the America/Los_Angeles timezone.",
+    "gold": [
+     210,
+     1109
+    ],
+    "calls": [
+     210,
+     1109
+    ],
+    "finder_calls": [
+     "Obtain geocoordinates for the address 505 Howard St, San Francisco, and get the current time in the America/Los_Angeles timezone."
+    ],
+    "offered": [
+     210,
+     217,
+     1109,
+     211,
+     408
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Obtain geocoordinates for the address 505 Howard St, San Francisco, and get the current time in the America/Los_Angeles timezone."
+        },
+        "result": "{\"tools\":[{\"id\":210,\"name\":\"Geocode\",\"server\":\"TrueWay Geocoding\",\"category\":\"Mapping\",\"description\":\"Obtain geocoordinates for address\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"address\":{\"type\":\"string\",\"description\":\"The address that you want to geocode\"}},\"required\":[\"address\"]}},{\"id\":217,\""
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 210,
+         "arguments": {
+          "address": "505 Howard St, San Francisco"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 1109,
+         "arguments": {
+          "zoneid": "America/Los_Angeles"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2079,
+    "output_tokens": 123,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.0843878009999557,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 3,
+    "cost_usd": 0.00211275
+   },
+   {
+    "qid": "3795",
+    "task": "My friends and I are organizing a basketball tournament in Los Angeles. We need to find a suitable venue to host the event. Can you recommend some basketball courts in Los Angeles that are available for rent? Additionally, provide us with the weather forecast for the tournament day.",
+    "gold": [
+     226,
+     304,
+     405
+    ],
+    "calls": [
+     226,
+     180
+    ],
+    "finder_calls": [
+     "Find APIs to recommend basketball courts in Los Angeles available for rent and to get the weather forecast for a specific tournament day in Los Angeles."
+    ],
+    "offered": [
+     406,
+     306,
+     175,
+     226,
+     180
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Find APIs to recommend basketball courts in Los Angeles available for rent and to get the weather forecast for a specific tournament day in Los Angeles."
+        },
+        "result": "{\"tools\":[{\"id\":406,\"name\":\"Get All Players\",\"server\":\"Free NBA\",\"category\":\"Sports\",\"description\":\"This endpoint retrieves all players from all seasons.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}},{\"id\":306,\"name\":\"Get All Games\",\"server\":\"Free NBA\",\"category\":\"Sports\",\"descript"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 226,
+         "arguments": {
+          "aggregateHours": 24,
+          "location": "Los Angeles, CA"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 180,
+         "arguments": {
+          "lat": 34.0522,
+          "lon": -118.2437
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 3295,
+    "output_tokens": 114,
+    "cached_tokens": 0,
+    "round_trips": 4,
+    "seconds": 3.2075843279999887,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 1,
+    "precision": 0.5,
+    "gold_offered": 0.3333333333333333,
+    "tool_calls": 3,
+    "cost_usd": 0.00298425
+   },
+   {
+    "qid": "22488",
+    "task": "I'm planning a trip to a foreign country and need to exchange currency. Can you provide me with the current exchange rates for USD to the local currency? Additionally, fetch the economic calendar for that country to help me plan my activities.",
+    "gold": [
+     350,
+     485
+    ],
+    "calls": [
+     350,
+     485
+    ],
+    "finder_calls": [
+     "Provide current exchange rates for USD to the local currency of a foreign country, and fetch that country's economic calendar to help plan activities."
+    ],
+    "offered": [
+     350,
+     270,
+     485,
+     733,
+     273
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Provide current exchange rates for USD to the local currency of a foreign country, and fetch that country's economic calendar to help plan activities."
+        },
+        "result": "{\"tools\":[{\"id\":350,\"name\":\"Rates\",\"server\":\"CurrencyAPI.net\",\"category\":\"Financial\",\"description\":\"Get live currency conversion rates of a given currency\",\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}},{\"id\":270,\"name\":\"Convert\",\"server\":\"CurrencyAPI.net\",\"category\":\"Financial\",\"des"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 350,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 485,
+         "arguments": {
+          "from": "2026-11-16",
+          "to": "2026-11-30"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 3454,
+    "output_tokens": 106,
+    "cached_tokens": 0,
+    "round_trips": 4,
+    "seconds": 2.906669333999986,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 3,
+    "cost_usd": 0.0030675
+   },
+   {
+    "qid": "17512",
+    "task": "I'm a student preparing for a science fair and I need some assistance with my project. Can you help me find relevant research papers and scientific articles? Also, recommend some educational websites and online forums for further discussion.",
+    "gold": [
+     186,
+     611,
+     612
+    ],
+    "calls": [
+     2
+    ],
+    "finder_calls": [
+     "Find APIs for searching research papers and scientific articles, and APIs for recommending educational websites and online forums for discussion."
+    ],
+    "offered": [
+     2,
+     120,
+     1367,
+     787,
+     839
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Find APIs for searching research papers and scientific articles, and APIs for recommending educational websites and online forums for discussion."
+        },
+        "result": "{\"tools\":[{\"id\":2,\"name\":\"newsSearch\",\"server\":\"Web Search\",\"category\":\"Data\",\"description\":\"Get news articles relevant for a given query.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"pageSize\":{\"type\":\"number\",\"description\":\"The number of items per page. The maximum value is 50.\"},\"autoCorrect\":{"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 2,
+         "arguments": {
+          "pageSize": 10,
+          "autoCorrect": true,
+          "q": "science fair research papers scientific articles educational websites online forums",
+          "pageNumber": 1
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2141,
+    "output_tokens": 90,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.651513889999997,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 0,
+    "precision": 0.0,
+    "gold_offered": 0.0,
+    "tool_calls": 2,
+    "cost_usd": 0.00201075
+   },
+   {
+    "qid": "2424",
+    "task": "I'm a cryptocurrency investor and I want to stay updated on the market. Can you provide me with the details for Bitcoin and the daily OHLCV records? Additionally, I'm curious about the weather conditions in my city. Please fetch the current weather data for my location.",
+    "gold": [
+     175,
+     312,
+     379
+    ],
+    "calls": [
+     312,
+     379,
+     175
+    ],
+    "finder_calls": [
+     "Provide Bitcoin details and daily OHLCV records, and fetch current weather data for the user's location/city."
+    ],
+    "offered": [
+     175,
+     379,
+     312,
+     180,
+     228
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Provide Bitcoin details and daily OHLCV records, and fetch current weather data for the user's location/city."
+        },
+        "result": "{\"tools\":[{\"id\":175,\"name\":\"Current Weather Data of a location.\",\"server\":\"Weather\",\"category\":\"Data\",\"description\":\"Returns the current (most recent) weather observation of a given location\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"lat\":{\"type\":\"number\",\"description\":\"Latitude\"},\"lon\":{\"type\":"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 312,
+         "arguments": {
+          "id": "BTC/USD"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 379,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 175,
+         "arguments": {
+          "lat": 0,
+          "lon": 0
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2982,
+    "output_tokens": 128,
+    "cached_tokens": 1152,
+    "round_trips": 3,
+    "seconds": 2.2997257329999883,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 3,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 4,
+    "cost_usd": 0.0020349
+   },
+   {
+    "qid": "23153",
+    "task": "I want to surprise my family with a special dinner and I need help with recipe ideas. Can you suggest some unique and flavorful dishes using ingredients like spices, herbs, and exotic fruits? Also, provide me with the nutritional information for these recipes. Additionally, can you recommend a reliable healthcare mailing service to promote healthy eating habits?",
+    "gold": [
+     130,
+     394
+    ],
+    "calls": [
+     130,
+     130,
+     394
+    ],
+    "finder_calls": [
+     "Suggest unique and flavorful dinner recipe ideas using ingredients like spices, herbs, and exotic fruits, provide nutritional information for these recipes, and recommend a reliable healthcare mailing service to promote healthy eating habits."
+    ],
+    "offered": [
+     130,
+     394,
+     616,
+     417,
+     618
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Suggest unique and flavorful dinner recipe ideas using ingredients like spices, herbs, and exotic fruits, provide nutritional information for these recipes, and recommend a reliable healthcare mailing service to promote healthy eating habits."
+        },
+        "result": "{\"tools\":[{\"id\":130,\"name\":\"/api/nutrition-data\",\"server\":\"Edamam Nutrition Analysis\",\"category\":\"Food\",\"description\":\"This returns the nutritional analysis for the specified food text by extracting information from a short unstructured food text (usually an ingredient line and returns the following"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 130,
+         "arguments": {
+          "ingr": "chicken breast, turmeric, cumin, coriander, garlic, ginger, cilantro, mango, lime"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 130,
+         "arguments": {
+          "ingr": "salmon, dill, parsley, paprika, lemon, pomegranate, olive oil, black pepper"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 394,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2799,
+    "output_tokens": 177,
+    "cached_tokens": 1024,
+    "round_trips": 3,
+    "seconds": 2.366666381999984,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 0.6666666666666666,
+    "gold_offered": 1.0,
+    "tool_calls": 4,
+    "cost_usd": 0.00220455
+   },
+   {
+    "qid": "4993",
+    "task": "I work for a travel agency and I'm looking for unique destinations to offer to our clients. Can you suggest some cities with interesting landmarks or attractions, provide me with their population and coordinates, and recommend some webcams in those cities so that our clients can have a virtual tour before booking?",
+    "gold": [
+     230,
+     606,
+     1049
+    ],
+    "calls": [
+     606,
+     606,
+     606,
+     230,
+     230,
+     230
+    ],
+    "finder_calls": [
+     "Suggest some cities with interesting landmarks or attractions, provide population and coordinates, and recommend webcams in those cities for a virtual tour before booking."
+    ],
+    "offered": [
+     606,
+     230,
+     1049,
+     1052,
+     678
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Suggest some cities with interesting landmarks or attractions, provide population and coordinates, and recommend webcams in those cities for a virtual tour before booking."
+        },
+        "result": "{\"tools\":[{\"id\":606,\"name\":\"Place Details\",\"server\":\"GeoDB Cities\",\"category\":\"Data\",\"description\":\"Get the details for a specific place, including location coordinates, population, and elevation above sea-level (if available).\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"placeId\":{\"type\":\"string\""
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 606,
+         "arguments": {
+          "placeId": "ChIJL_P_CXMEDTkRw0ZdG-0GVvw"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 606,
+         "arguments": {
+          "placeId": "ChIJD7fiBh9u5kcRYJSMaMOCCwQ"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 606,
+         "arguments": {
+          "placeId": "ChIJOwg_06VPwokRYv534QaPC8g"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 230,
+         "arguments": {
+          "lat": 48.8566,
+          "lng": 2.3522,
+          "radius": 25
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 230,
+         "arguments": {
+          "lat": 41.9028,
+          "lng": 12.4964,
+          "radius": 25
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 230,
+         "arguments": {
+          "lat": 35.6895,
+          "lng": 139.6917,
+          "radius": 25
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 3035,
+    "output_tokens": 285,
+    "cached_tokens": 1024,
+    "round_trips": 3,
+    "seconds": 3.2546473480000344,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 2,
+    "precision": 0.3333333333333333,
+    "gold_offered": 1.0,
+    "tool_calls": 7,
+    "cost_usd": 0.0028675500000000004
+   },
+   {
+    "qid": "9308",
+    "task": "I'm planning a weekend getaway with my friends and we need to find a suitable vacation rental. Can you recommend some popular vacation rental websites with a wide range of options? Also, provide information about nearby outdoor activities such as hiking trails or beach access. Additionally, suggest some local restaurants or bars for nightlife.",
+    "gold": [
+     40,
+     1121,
+     1273
+    ],
+    "calls": [
+     234
+    ],
+    "finder_calls": [
+     "Recommend popular vacation rental websites with a wide range of options, and provide information about nearby outdoor activities such as hiking trails or beach access, plus local restaurants or bars for nightlife."
+    ],
+    "offered": [
+     234,
+     120,
+     1210,
+     322,
+     320
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Recommend popular vacation rental websites with a wide range of options, and provide information about nearby outdoor activities such as hiking trails or beach access, plus local restaurants or bars for nightlife."
+        },
+        "result": "{\"tools\":[{\"id\":234,\"name\":\"FindPlacesNearby\",\"server\":\"TrueWay Places\",\"category\":\"Mapping\",\"description\":\"Search for nearby places\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\",\"description\":\"The latitude/longitude around which to retrieve places\"}},\"required\":[\"locatio"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 234,
+         "arguments": {
+          "location": "0,0"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2179,
+    "output_tokens": 81,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 1.9845512119999924,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 0,
+    "precision": 0.0,
+    "gold_offered": 0.0,
+    "tool_calls": 2,
+    "cost_usd": 0.00199875
+   },
+   {
+    "qid": "2529",
+    "task": "I want to create a comprehensive report on the WHOIS data of a list of domain names. Retrieve the WHOIS data for the domains 'example1.com', 'example2.com', and 'example3.com' using the 'Bulk WHOIS' API. Also, fetch the DNS records for these domains using the DNS Lookup API.",
+    "gold": [
+     51,
+     197
+    ],
+    "calls": [
+     197,
+     197,
+     197,
+     51,
+     51,
+     51
+    ],
+    "finder_calls": [
+     "Retrieve WHOIS data for the domains 'example1.com', 'example2.com', and 'example3.com' using the 'Bulk WHOIS' API. Also, fetch the DNS records for these domains using the DNS Lookup API."
+    ],
+    "offered": [
+     51,
+     197,
+     196,
+     1027,
+     799
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Retrieve WHOIS data for the domains 'example1.com', 'example2.com', and 'example3.com' using the 'Bulk WHOIS' API. Also, fetch the DNS records for these domains using the DNS Lookup API."
+        },
+        "result": "{\"tools\":[{\"id\":51,\"name\":\"/whoisserver/DNSService\",\"server\":\"DNS Lookup\",\"category\":\"Database\",\"description\":\"DNS Lookup API\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"type\":{\"type\":\"string\",\"description\":\"DNS type: A, NS, SOA, MX, etc. You can specify multiple comma-separated values, e.g., A,S"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 197,
+         "arguments": {
+          "domain": "example1.com"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 197,
+         "arguments": {
+          "domain": "example2.com"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 197,
+         "arguments": {
+          "domain": "example3.com"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 51,
+         "arguments": {
+          "type": "_all",
+          "domainname": "example1.com"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 51,
+         "arguments": {
+          "type": "_all",
+          "domainname": "example2.com"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 51,
+         "arguments": {
+          "type": "_all",
+          "domainname": "example3.com"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2544,
+    "output_tokens": 243,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.5003382919999737,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 0.3333333333333333,
+    "gold_offered": 1.0,
+    "tool_calls": 7,
+    "cost_usd": 0.0030015
+   },
+   {
+    "qid": "23602",
+    "task": "I need to create a comprehensive nutrition guide for my fitness app. Can you provide the nutritional analysis for a variety of food items? Additionally, I would like to include guidelines for vaccinations to promote overall health and well-being.",
+    "gold": [
+     130,
+     388
+    ],
+    "calls": [
+     130,
+     130,
+     130,
+     130,
+     130,
+     388
+    ],
+    "finder_calls": [
+     "Create a comprehensive nutrition guide for a fitness app. Need nutritional analysis for a variety of food items, and guidelines for vaccinations to promote overall health and well-being."
+    ],
+    "offered": [
+     130,
+     388,
+     393,
+     394,
+     1405
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Create a comprehensive nutrition guide for a fitness app. Need nutritional analysis for a variety of food items, and guidelines for vaccinations to promote overall health and well-being."
+        },
+        "result": "{\"tools\":[{\"id\":130,\"name\":\"/api/nutrition-data\",\"server\":\"Edamam Nutrition Analysis\",\"category\":\"Food\",\"description\":\"This returns the nutritional analysis for the specified food text by extracting information from a short unstructured food text (usually an ingredient line and returns the following"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 130,
+         "arguments": {
+          "ingr": "apple"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 130,
+         "arguments": {
+          "ingr": "banana"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 130,
+         "arguments": {
+          "ingr": "chicken breast"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 130,
+         "arguments": {
+          "ingr": "salmon"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 130,
+         "arguments": {
+          "ingr": "broccoli"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 388,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2266,
+    "output_tokens": 205,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.2905166870000073,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 0.3333333333333333,
+    "gold_offered": 1.0,
+    "tool_calls": 7,
+    "cost_usd": 0.002622
+   },
+   {
+    "qid": "16286",
+    "task": "I'm planning a family trip to a national park and I need some information about the park. Can you provide me with the park's location, opening hours, and entrance fees? Also, recommend some hiking trails and camping spots within the park.",
+    "gold": [
+     676,
+     680
+    ],
+    "calls": [
+     210
+    ],
+    "finder_calls": [
+     "Provide information about a national park: location, opening hours, entrance fees, hiking trails, and camping spots within the park."
+    ],
+    "offered": [
+     174,
+     214,
+     209,
+     210,
+     694
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Provide information about a national park: location, opening hours, entrance fees, hiking trails, and camping spots within the park."
+        },
+        "result": "{\"tools\":[{\"id\":174,\"name\":\"5 day Forecast\",\"server\":\"Weather\",\"category\":\"Data\",\"description\":\"3 hour interval - 5 day forecast for a given lat/lon\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"lat\":{\"type\":\"number\",\"description\":\"Latitude (Degrees)\"},\"lon\":{\"type\":\"number\",\"description\":\"Longitud"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 210,
+         "arguments": {
+          "address": "national park"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2172,
+    "output_tokens": 70,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.2687373660000247,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 0,
+    "precision": 0.0,
+    "gold_offered": 0.0,
+    "tool_calls": 2,
+    "cost_usd": 0.001944
+   },
+   {
+    "qid": "1999",
+    "task": "I'm planning a romantic date night and I need some inspiration. Find me some romantic dinner recipes and provide the related artist and their albums for a romantic playlist. Also, fetch the latest news articles about romantic date ideas.",
+    "gold": [
+     2,
+     90,
+     307
+    ],
+    "calls": [
+     2,
+     97,
+     106
+    ],
+    "finder_calls": [
+     "Find APIs for: romantic dinner recipes, artist and albums for a romantic playlist, and latest news articles about romantic date ideas.",
+     "Find APIs for romantic dinner recipes and artist albums for a romantic playlist."
+    ],
+    "offered": [
+     2,
+     90,
+     49,
+     106,
+     97,
+     75,
+     88,
+     95,
+     506
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Find APIs for: romantic dinner recipes, artist and albums for a romantic playlist, and latest news articles about romantic date ideas."
+        },
+        "result": "{\"tools\":[{\"id\":2,\"name\":\"newsSearch\",\"server\":\"Web Search\",\"category\":\"Data\",\"description\":\"Get news articles relevant for a given query.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"pageSize\":{\"type\":\"number\",\"description\":\"The number of items per page. The maximum value is 50.\"},\"autoCorrect\":{"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Find APIs for romantic dinner recipes and artist albums for a romantic playlist."
+        },
+        "result": "{\"tools\":[{\"id\":97,\"name\":\"artists/get-latest-release\",\"server\":\"Shazam\",\"category\":\"Music\",\"description\":\"Get latest release of an artist\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The value of 'artist->adamid' field returned in .../search OR .../songs/v2/det"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 2,
+         "arguments": {
+          "q": "romantic date ideas",
+          "pageSize": 5,
+          "autoCorrect": true,
+          "pageNumber": 1
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 97,
+         "arguments": {
+          "id": "romantic playlist artist"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 106,
+         "arguments": {
+          "id": "romantic playlist artist"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 6294,
+    "output_tokens": 185,
+    "cached_tokens": 1152,
+    "round_trips": 5,
+    "seconds": 3.1900454780000587,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 1,
+    "precision": 0.3333333333333333,
+    "gold_offered": 0.6666666666666666,
+    "tool_calls": 5,
+    "cost_usd": 0.0047754
+   },
+   {
+    "qid": "9156",
+    "task": "I'm organizing a music-themed event for my company and I need some background music. Can you provide me with a playlist of the top dance club artists and the Billboard Global 200 chart? I want to create a lively ambiance for the attendees.",
+    "gold": [
+     74,
+     506,
+     810
+    ],
+    "calls": [
+     74,
+     810
+    ],
+    "finder_calls": [
+     "Provide a playlist of the top dance club artists and the Billboard Global 200 chart for a music-themed company event background music playlist."
+    ],
+    "offered": [
+     74,
+     198,
+     73,
+     506,
+     810
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Provide a playlist of the top dance club artists and the Billboard Global 200 chart for a music-themed company event background music playlist."
+        },
+        "result": "{\"tools\":[{\"id\":74,\"name\":\"Top Dance Club Artists\",\"server\":\"Billboard-API\",\"category\":\"Music\",\"description\":\"Provide the Greatest of All Time Top Dance Club Artists chart information\",\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}},{\"id\":198,\"name\":\"/apiv1.asmx/SearchLyricDirect?arti"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 74,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 810,
+         "arguments": {
+          "date": "2026-11-16",
+          "range": "200"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2002,
+    "output_tokens": 115,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.1411598540000014,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 2,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 3,
+    "cost_usd": 0.002019
+   },
+   {
+    "qid": "1841",
+    "task": "I'm a cryptocurrency enthusiast and I want to gather information about the market. Can you provide me with the details of the Coinranking market 'MP77r-vKf4' and the exchange '-zdvbieRdZ'? Additionally, I'm interested in finding the available symbols and availability dates for the 'Exchanges' tool.",
+    "gold": [
+     353,
+     492,
+     935
+    ],
+    "calls": [
+     935,
+     492,
+     353
+    ],
+    "finder_calls": [
+     "Get details for Coinranking market 'MP77r-vKf4' and exchange '-zdvbieRdZ'. Also find available symbols and availability dates for the 'Exchanges' tool."
+    ],
+    "offered": [
+     353,
+     935,
+     532,
+     492,
+     378
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Get details for Coinranking market 'MP77r-vKf4' and exchange '-zdvbieRdZ'. Also find available symbols and availability dates for the 'Exchanges' tool."
+        },
+        "result": "{\"tools\":[{\"id\":353,\"name\":\"Exchanges\",\"server\":\"Tardis.dev\",\"category\":\"Data\",\"description\":\"Gets the exchanges details: available symbols, availability dates, available channels, CSV datasets info, incidents etc.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"exchange\":{\"type\":\"string\",\"descriptio"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 935,
+         "arguments": {
+          "uuid": "MP77r-vKf4"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 492,
+         "arguments": {
+          "uuid": "-zdvbieRdZ"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 353,
+         "arguments": {
+          "exchange": "Exchanges"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2285,
+    "output_tokens": 154,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.269395108000026,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 3,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 4,
+    "cost_usd": 0.00240675
+   },
+   {
+    "qid": "22713",
+    "task": "Get the ID of the rich menu linked to a user with the LINE Messaging API. Furthermore, retrieve the outbound messages history with the Sms77.io API.",
+    "gold": [
+     953,
+     955
+    ],
+    "calls": [
+     955,
+     953
+    ],
+    "finder_calls": [
+     "Get the ID of the rich menu linked to a user with the LINE Messaging API. Furthermore, retrieve the outbound messages history with the Sms77.io API."
+    ],
+    "offered": [
+     955,
+     953,
+     717,
+     424,
+     715
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Get the ID of the rich menu linked to a user with the LINE Messaging API. Furthermore, retrieve the outbound messages history with the Sms77.io API."
+        },
+        "result": "{\"tools\":[{\"id\":955,\"name\":\"Get rich menu ID of user\",\"server\":\"LINE Messaging\",\"category\":\"Communication\",\"description\":\"Gets the ID of the rich menu linked to a user.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"userId\":{\"type\":\"string\",\"description\":\"User ID. Found in the source object of webho"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 955,
+         "arguments": {
+          "userId": "placeholder_user_id"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 953,
+         "arguments": {
+          "p": "placeholder_api_key"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2021,
+    "output_tokens": 118,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.0427793759999915,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 3,
+    "cost_usd": 0.00204675
+   },
+   {
+    "qid": "5447",
+    "task": "I want to impress my friends with some interesting facts. Can you provide me with a random trivia fact? Also, tell me a Chuck Norris joke.",
+    "gold": [
+     43,
+     403
+    ],
+    "calls": [
+     403,
+     43
+    ],
+    "finder_calls": [
+     "Provide a random trivia fact and a Chuck Norris joke."
+    ],
+    "offered": [
+     43,
+     48,
+     403,
+     257,
+     730
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Provide a random trivia fact and a Chuck Norris joke."
+        },
+        "result": "{\"tools\":[{\"id\":43,\"name\":\"/jokes/random\",\"server\":\"Chuck Norris\",\"category\":\"Social\",\"description\":\"Retrieve a random chuck joke in JSON format.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}},{\"id\":48,\"name\":\"Get trivia fact\",\"server\":\"Numbers\",\"category\":\"Education\",\"description\":"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 403,
+         "arguments": {
+          "type": "trivia"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 43,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 1848,
+    "output_tokens": 92,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 1.9625140169999682,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 3,
+    "cost_usd": 0.0018
+   },
+   {
+    "qid": "11927",
+    "task": "I'm writing an educational blog post about interesting number facts. Can you give me a trivia fact about the number 100? Also, recommend a music trivia game level that I can mention in the blog post. Additionally, find a Chuck Norris joke related to education to entertain my readers.",
+    "gold": [
+     43,
+     45,
+     48
+    ],
+    "calls": [
+     48,
+     43
+    ],
+    "finder_calls": [
+     "Need: (1) a trivia fact about the number 100, (2) a recommended music trivia game level to mention in a blog post, and (3) a Chuck Norris joke related to education."
+    ],
+    "offered": [
+     43,
+     48,
+     46,
+     403,
+     47
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Need: (1) a trivia fact about the number 100, (2) a recommended music trivia game level to mention in a blog post, and (3) a Chuck Norris joke related to education."
+        },
+        "result": "{\"tools\":[{\"id\":43,\"name\":\"/jokes/random\",\"server\":\"Chuck Norris\",\"category\":\"Social\",\"description\":\"Retrieve a random chuck joke in JSON format.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}},{\"id\":48,\"name\":\"Get trivia fact\",\"server\":\"Numbers\",\"category\":\"Education\",\"description\":"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 48,
+         "arguments": {
+          "number": "100"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 43,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2789,
+    "output_tokens": 108,
+    "cached_tokens": 0,
+    "round_trips": 4,
+    "seconds": 2.857272761000033,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 2,
+    "precision": 1.0,
+    "gold_offered": 0.6666666666666666,
+    "tool_calls": 3,
+    "cost_usd": 0.00257775
+   },
+   {
+    "qid": "17335",
+    "task": "I want to organize a beach wedding in Miami next month. Can you provide me with the simple radiation forecast for the beach area? I also need the nearest places readings of air quality around the beach to ensure a healthy environment for the wedding guests.",
+    "gold": [
+     361,
+     1083
+    ],
+    "calls": [
+     361,
+     1083
+    ],
+    "finder_calls": [
+     "Provide a simple radiation forecast for the beach area in Miami next month, and the nearest places readings of air quality around the beach to ensure a healthy environment for wedding guests."
+    ],
+    "offered": [
+     177,
+     1083,
+     180,
+     361,
+     176
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Provide a simple radiation forecast for the beach area in Miami next month, and the nearest places readings of air quality around the beach to ensure a healthy environment for wedding guests."
+        },
+        "result": "{\"tools\":[{\"id\":177,\"name\":\"Current Air Quality\",\"server\":\"Air Quality\",\"category\":\"Weather\",\"description\":\"Retrieves current air quality conditions for any location in the world, given a lat/lon.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"lon\":{\"type\":\"string\",\"description\":\"Longitude\"},\"lat\":{"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 361,
+         "arguments": {
+          "latitude": 25.7617,
+          "longitude": -80.1918
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 1083,
+         "arguments": {
+          "lat": 25.7617,
+          "lng": -80.1918
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2199,
+    "output_tokens": 139,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.3142844350000473,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 3,
+    "cost_usd": 0.00227475
+   },
+   {
+    "qid": "5917",
+    "task": "I'm a travel blogger and I'm planning a trip to a popular tourist destination. Can you provide me with information about the top attractions, hotels, and restaurants in that location? Additionally, could you suggest some trending images related to the destination?",
+    "gold": [
+     118,
+     121,
+     529
+    ],
+    "calls": [
+     529,
+     121,
+     120
+    ],
+    "finder_calls": [
+     "Provide information about the top attractions, hotels, and restaurants in a popular tourist destination, and suggest trending images related to the destination."
+    ],
+    "offered": [
+     121,
+     529,
+     120,
+     135,
+     139
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Provide information about the top attractions, hotels, and restaurants in a popular tourist destination, and suggest trending images related to the destination."
+        },
+        "result": "{\"tools\":[{\"id\":121,\"name\":\"Trending\",\"server\":\"Bing Image Search\",\"category\":\"Media\",\"description\":\"Get currently trending images.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}},{\"id\":529,\"name\":\"Entities Search\",\"server\":\"Bing Entity Search\",\"category\":\"Search\",\"description\":\"Get "
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 529,
+         "arguments": {
+          "q": "popular tourist destination top attractions hotels restaurants"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 121,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 120,
+         "arguments": {
+          "q": "popular tourist destination travel"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2098,
+    "output_tokens": 147,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.3856483269999273,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 2,
+    "precision": 0.6666666666666666,
+    "gold_offered": 0.6666666666666666,
+    "tool_calls": 4,
+    "cost_usd": 0.002235
+   },
+   {
+    "qid": "22036",
+    "task": "I'm writing a blog about the latest fashion trends and I need some high-quality images. Can you help me find relevant images of the latest fashion trends? Additionally, provide me with a list of supported countries for my blog's global audience.",
+    "gold": [
+     118,
+     120
+    ],
+    "calls": [
+     120,
+     118
+    ],
+    "finder_calls": [
+     "Find APIs for searching high-quality images relevant to the latest fashion trends, and APIs for listing supported countries for a global audience."
+    ],
+    "offered": [
+     120,
+     2,
+     121,
+     118,
+     119
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Find APIs for searching high-quality images relevant to the latest fashion trends, and APIs for listing supported countries for a global audience."
+        },
+        "result": "{\"tools\":[{\"id\":120,\"name\":\"Image Search\",\"server\":\"Bing Image Search\",\"category\":\"Media\",\"description\":\"Get relevant images for a given query.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"q\":{\"type\":\"string\",\"description\":\"The user's search query string\"}},\"required\":[\"q\"]}},{\"id\":2,\"name\":\"newsS"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 120,
+         "arguments": {
+          "q": "latest fashion trends high-quality images"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 118,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 1997,
+    "output_tokens": 110,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.329076291999968,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 3,
+    "cost_usd": 0.00199275
+   },
+   {
+    "qid": "4759",
+    "task": "I'm writing a blog post about the evolution of song lyrics. Can you help me find the lyrics of the song 'Bad' by Michael Jackson using the Chart Lyrics API? Additionally, provide me with the basic information of the song 'The Phoenix' from Soundcloud. Lastly, fetch me the playlist info of the playlist 'Almost Lover' from Soundcloud.",
+    "gold": [
+     95,
+     96,
+     198
+    ],
+    "calls": [
+     198,
+     95,
+     96
+    ],
+    "finder_calls": [
+     "Find APIs for Chart Lyrics lyrics lookup, Soundcloud song basic info, and Soundcloud playlist info."
+    ],
+    "offered": [
+     95,
+     198,
+     96,
+     81,
+     496
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Find APIs for Chart Lyrics lyrics lookup, Soundcloud song basic info, and Soundcloud playlist info."
+        },
+        "result": "{\"tools\":[{\"id\":95,\"name\":\"/song/info\",\"server\":\"Soundcloud\",\"category\":\"Social\",\"description\":\"Get basic information of a song.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"track_url\":{\"type\":\"string\",\"description\":\"\"}},\"required\":[\"track_url\"]}},{\"id\":198,\"name\":\"/apiv1.asmx/SearchLyricDirect?ar"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 198,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 95,
+         "arguments": {
+          "track_url": "https://soundcloud.com/search?q=The%20Phoenix"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 96,
+         "arguments": {
+          "playlist_url": "https://soundcloud.com/search/sets?q=Almost%20Lover"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2238,
+    "output_tokens": 148,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 2.141393852999961,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 3,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 4,
+    "cost_usd": 0.0023445
+   },
+   {
+    "qid": "23381",
+    "task": "I'm planning a family vacation to Hawaii and I need some information about the popular tourist attractions. Can you fetch some images of the attractions and provide me with the supported languages for search using the Bing Web Search API? Additionally, I would like to know the current trending images using the Bing Image Search API.",
+    "gold": [
+     119,
+     120,
+     121
+    ],
+    "calls": [
+     119,
+     121,
+     120
+    ],
+    "finder_calls": [
+     "Fetch images of popular tourist attractions in Hawaii, provide the supported languages for search using the Bing Web Search API, and get the current trending images using the Bing Image Search API."
+    ],
+    "offered": [
+     121,
+     119,
+     120,
+     118,
+     300
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Fetch images of popular tourist attractions in Hawaii, provide the supported languages for search using the Bing Web Search API, and get the current trending images using the Bing Image Search API."
+        },
+        "result": "{\"tools\":[{\"id\":121,\"name\":\"Trending\",\"server\":\"Bing Image Search\",\"category\":\"Media\",\"description\":\"Get currently trending images.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}},{\"id\":119,\"name\":\"Supported Languages\",\"server\":\"Bing Web Search\",\"category\":\"Search\",\"description\":\"The"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 119,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 121,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 120,
+         "arguments": {
+          "q": "popular tourist attractions in Hawaii"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2094,
+    "output_tokens": 138,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 1.817824086999991,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 3,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 4,
+    "cost_usd": 0.0021915
+   },
+   {
+    "qid": "12805",
+    "task": "I'm a food blogger and I want to create a new recipe using some unique ingredients. Can you fetch me a list of cocktail recipes along with their ingredients? Also, fetch the web pages related to the search query 'unique food recipes' to gather more inspiration.",
+    "gold": [
+     0,
+     307
+    ],
+    "calls": [
+     0,
+     307,
+     1,
+     1
+    ],
+    "finder_calls": [
+     "Fetch a list of cocktail recipes along with their ingredients, and fetch web pages related to the search query 'unique food recipes'."
+    ],
+    "offered": [
+     0,
+     1,
+     307,
+     112,
+     161
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Fetch a list of cocktail recipes along with their ingredients, and fetch web pages related to the search query 'unique food recipes'."
+        },
+        "result": "{\"tools\":[{\"id\":0,\"name\":\"List of Cocktails\",\"server\":\"The Cocktail DB\",\"category\":\"Food\",\"description\":\"This endpoint responds with a list of cocktails that includes their names and images, as well as their IDs, which must be provided in the \\\"Detailed Cocktail Recipe by ID\\\" endpoint to receive th"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 0,
+         "arguments": {}
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       },
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 307,
+         "arguments": {
+          "q": "unique food recipes",
+          "autoCorrect": true,
+          "pageNumber": 1,
+          "pageSize": 10
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 1,
+         "arguments": {
+          "id": "11007"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 1,
+         "arguments": {
+          "id": "11000"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 4630,
+    "output_tokens": 173,
+    "cached_tokens": 0,
+    "round_trips": 5,
+    "seconds": 3.5362652499999925,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": true,
+    "gold_called": 2,
+    "precision": 0.5,
+    "gold_offered": 1.0,
+    "tool_calls": 5,
+    "cost_usd": 0.004251
+   },
+   {
+    "qid": "22883",
+    "task": "I want to ensure the email addresses in my personal contact list are valid and deliverable. Please verify each email address and provide the verification results along with the user's full name and domain. Additionally, check if any of the email addresses are disposable and provide the SMTP provider information for each verified email.",
+    "gold": [
+     371,
+     705
+    ],
+    "calls": [
+     705
+    ],
+    "finder_calls": [
+     "Verify email addresses in a personal contact list for validity and deliverability. For each email, provide verification results, user's full name, domain, whether the email is disposable, and SMTP provider information."
+    ],
+    "offered": [
+     371,
+     705,
+     370,
+     369,
+     53
+    ],
+    "transcript": [
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "find_tools",
+        "arguments": {
+         "task": "Verify email addresses in a personal contact list for validity and deliverability. For each email, provide verification results, user's full name, domain, whether the email is disposable, and SMTP provider information."
+        },
+        "result": "{\"tools\":[{\"id\":371,\"name\":\"Validate email address\",\"server\":\"mailboxlayer\",\"category\":\"Tools\",\"description\":\"The main API endpoint for validating email addresses\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"email\":{\"type\":\"string\",\"description\":\"the email address to be validated\"}},\"required\":[\"e"
+       }
+      ]
+     },
+     {
+      "assistant": null,
+      "tool_calls": [
+       {
+        "name": "call_api",
+        "arguments": {
+         "api_id": 705,
+         "arguments": {
+          "email": "john.doe@example.com"
+         }
+        },
+        "result": "{\"status\": \"success\", \"message\": \"API call executed\", \"data\": {\"ok\": true}}"
+       }
+      ]
+     },
+     {
+      "assistant": "DONE",
+      "tool_calls": []
+     }
+    ],
+    "input_tokens": 2138,
+    "output_tokens": 87,
+    "cached_tokens": 0,
+    "round_trips": 3,
+    "seconds": 1.9980453870000403,
+    "final": "DONE",
+    "hit_cap": false,
+    "success": false,
+    "gold_called": 1,
+    "precision": 1.0,
+    "gold_offered": 1.0,
+    "tool_calls": 2,
+    "cost_usd": 0.001995
    }
   ],
   "waypoint": [
