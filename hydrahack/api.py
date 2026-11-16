@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
 RESULTS = ROOT / "eval" / "results" / "waypoint-test.json"
 EXAMPLES = ROOT / "eval" / "results" / "examples.json"
+COLD_START = ROOT / "eval" / "results" / "cold-start-test.json"
 LIVE_TASK_BASE = 5_000_000
 MCP_MAX_BYTES = 64_000
 MCP_MAX_BATCH = 8
@@ -395,7 +396,16 @@ def results() -> dict:
         "slices": raw["slices"],
         "generated_at": raw["generated_at"],
         "catalog_apis": len(state.apis) if state.ready else None,
+        "cold_start": _cold_start(),
     }
+
+
+def _cold_start() -> dict | None:
+    if not COLD_START.exists():
+        return None
+    raw = json.loads(COLD_START.read_text())
+    keys = ("held_out_apis", "held_out_frac", "tasks", "completeness", "generated_at")
+    return {k: raw[k] for k in keys}
 
 
 if WEB.exists():
