@@ -1,4 +1,19 @@
-# Deploy (Fly.io)
+# Deploy
+
+## Current host: Render free web service
+
+The live link runs on Render's free tier, which needs no card: **512 MB RAM, 0.1 CPU, no persistent disk**, and it spins down after 15 idle minutes (a keep-alive workflow pings /health every 5 minutes). One container runs both HydraDB (loopback only) and the FastAPI app, from `infra/render/Dockerfile`.
+
+- **No disk means no persistence.** The graph is baked into the image at build time: the `seed` stage starts the engine, lets the app ingest the ToolBench catalog and training runs (never test labels), and stops the engine cleanly. A cold start only opens that store. Anything written at runtime (the Teach button, live feedback) is lost when the instance restarts or redeploys, and the demo returns to the baked state.
+- **Cold start is about 200 s at 0.1 CPU** (about 11 minutes before the store was baked), which is why the keep-alive ping matters. The remaining time is the app rebuilding its in-memory BM25 index from the 19,361 stored tasks and a 30 s scan of them. The container sets `HYDRADB_TIMEOUT=150` and `GRAPH_MAX_QUERY_RUNTIME_MS=120000` because single queries take 25 to 30 s on 0.1 CPU.
+- **Performance is the free tier's, not the app's**: see docs/load.md for the 0.1 CPU numbers next to the 2-CPU ones.
+- Image: `.github/workflows/render-image.yml` builds and pushes `ghcr.io/krishhgg/hydrahack-render` on every push to main. `infra/render/deploy.sh setup|deploy|status` (needs `RENDER_API_KEY`) creates the service and redeploys it.
+
+## Fly.io and Railway (kept, unused)
+
+Fly.io needs a card and Railway restricted the workspace, so neither is the host. The Fly variant is below and its files stay in the repo (`fly.toml`, `infra/fly/`).
+
+### Fly.io
 
 One Fly app, one machine, two processes in one container: HydraDB (the engine, on loopback) and the FastAPI app (public). HydraDB needs a long-running process and a persistent disk, which is why this is not a serverless host.
 

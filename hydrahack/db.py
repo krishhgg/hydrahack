@@ -89,7 +89,7 @@ class HydraDB:
         graph: str = "default",
         cell_id: str = "cell-0",
         admin_url: str | None = None,
-        timeout: float = 30.0,
+        timeout: float | None = None,
     ):
         self.url = (url or os.environ.get("HYDRADB_URL", "http://127.0.0.1:8443")).rstrip("/")
         self.admin_url = (
@@ -99,7 +99,7 @@ class HydraDB:
         self.cell_id = cell_id
         token = token or os.environ.get("HYDRADB_TOKEN", DEFAULT_TOKEN)
         self._http = httpx.Client(
-            timeout=timeout,
+            timeout=timeout or float(os.environ.get("HYDRADB_TIMEOUT", "30")),
             headers={"Authorization": f"Bearer {token}"},
             limits=httpx.Limits(max_connections=64, max_keepalive_connections=64),
         )
