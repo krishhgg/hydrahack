@@ -394,6 +394,7 @@ def results() -> dict:
         "headline": {"metric": "Completeness@5", **raw["headline"]},
         "slices": raw["slices"],
         "generated_at": raw["generated_at"],
+        "catalog_apis": len(state.apis) if state.ready else None,
     }
 
 
