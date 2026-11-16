@@ -60,6 +60,7 @@ engine2=$!
 # Temporary: a snapshot of the engine's state at /__diag on the warm-up listener, because Render's
 # log stream stops forwarding this container's output after the first second.
 (
+  set +e
   while true; do
     {
       date -u +%T
@@ -98,11 +99,17 @@ engine2=$!
 ) &
 diag_worker=$!
 (
+  set +e
   sleep 45
   pid=$(pgrep -x graph-node | head -n1)
   (timeout 25 bash -c 'exec 3<>/dev/tcp/127.0.0.1/8443; b="{\"cell_id\":\"cell-0\",\"query_id\":\"diag-$RANDOM$RANDOM\",\"query\":\"RETURN 1 AS x\"}"; printf "POST /v1/graphs/default/query HTTP/1.0\r\nHost: 127.0.0.1\r\nAuthorization: Bearer %s\r\nContent-Type: application/json\r\nContent-Length: %s\r\nConnection: close\r\n\r\n%s" "$HYDRADB_TOKEN" "${#b}" "$b" >&3; head -c 300 <&3' > /tmp/q.out 2>&1 &)
   sleep 1
-  command -v strace >/dev/null && timeout 15 strace -f -tt -p "$pid" -o /tmp/st.txt >/dev/null 2>&1 || echo "strace unavailable or failed" > /tmp/st.txt
+  if command -v strace >/dev/null; then
+    timeout 15 strace -f -tt -p "$pid" -o /tmp/st.txt >/dev/null 2>&1
+    [ -s /tmp/st.txt ] || echo "strace attached nothing" > /tmp/st.txt
+  else
+    echo "strace not installed" > /tmp/st.txt
+  fi
 ) &
 probe_worker=$!
 
