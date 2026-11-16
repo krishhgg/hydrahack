@@ -64,7 +64,8 @@
   const gist = (s) => {
     let t = String(s ?? "").trim();
     for (let i = 0; i < 3; i++) {
-      t = t.replace(/^(also|and|additionally|furthermore|moreover|then|finally|please|hey|hi)[,!.]?\s+/i, "")
+      t = t.replace(/^(also|and|additionally|furthermore|moreover|then|finally|lastly|firstly|first|secondly|next|plus|please|hey|hi)[,!.]?\s+/i, "")
+        .replace(/^(i'?d|i would|we'?d|we would)\s+(like|love)\s+(you\s+)?to\s+(know|see|get|have|find)?\s*/i, "")
         .replace(/^(i'?m|i am|we'?re|we are)\s+(a|an|the)?\s*/i, "")
         .replace(/^(can|could|would|will)\s+(you|u)\s+(please\s+)?/i, "")
         .replace(/^(i|we)\s+(would like|want|need|wish)\s+(you\s+)?to\s+/i, "")
@@ -72,6 +73,12 @@
         .replace(/^(provide|give|get|fetch|find|show|tell|send)\s+(me|us)\s+(with\s+)?/i, "$1 ");
     }
     return t.charAt(0).toUpperCase() + t.slice(1);
+  };
+  const truncMid = (s, n) => {
+    s = String(s ?? "");
+    if (s.length <= n) return s;
+    const tail = Math.max(4, Math.floor((n - 1) * 0.45));
+    return s.slice(0, n - 1 - tail) + "…" + s.slice(-tail);
   };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const niceStep = (r) => {
@@ -332,7 +339,10 @@
     route(ex.text);
   }
 
+  let quietUntil = 0;
+
   function reveal() {
+    quietUntil = performance.now() + 500;
     const w = $("#work");
     const top = w.getBoundingClientRect().top;
     if (Math.abs(top - 56) < 8) return;
@@ -498,7 +508,7 @@
     const pctOf = (x) => (maxTotal > 0 ? ((x / maxTotal) * 100).toFixed(1) + "%" : "0%");
     const title = "past tasks " + v.task.toFixed(2) + " + clauses " + v.clause.toFixed(2) + " + text " + v.text.toFixed(2)
       + (v.rf < 1 ? " × rejected " + v.rf.toFixed(2) : "") + (isNum(t.score) ? " = " + t.score.toFixed(2) : "");
-    return el("span", { class: "vote", title, "aria-label": title },
+    return el("span", { class: "vote", title, role: "img", "aria-label": title },
       ...VOTE_KINDS.filter((k) => v[k] > 0).map((k) => el("span", { class: "vs v-" + k, style: "width:" + pctOf(v[k]) })));
   }
 
@@ -538,14 +548,14 @@
         cb,
         el("span", { class: "rank", text: String(i + 1) }),
         el("div", { class: "tbody" },
-          el("div", { class: "tname", title: t.name || "" }, t.name || "API " + t.idx, lesson != null && el("span", { class: "lesson-chip", title: "Reached through Task " + lesson + ", which you taught", text: "your lesson" })),
+          el("div", { class: "tname-row" }, el("span", { class: "tname", title: t.name || "", text: t.name || "API " + t.idx }), lesson != null && el("span", { class: "lesson-chip", title: "Reached through Task " + lesson + ", which you taught", text: "your lesson" })),
           el("div", { class: "tsub", title: sub }, sub, via.length > 0 && (sub ? " · " : ""), via.length > 0 && el("span", { class: "via" }, via))),
         el("div", { class: "tmeta" },
           change && el("span", { class: "chg " + change[0], text: change[1] }),
           isWp && maxTotal > 0 && voteBar(t, maxTotal),
           isWp && isNum(t.score) && el("span", { class: "tscore", text: t.score.toFixed(2) }),
           needed && el("span", { class: "gold", title: "Ground truth: this task needed this tool", text: "✓" })));
-      li.addEventListener("mouseenter", () => focusGraph("a" + t.idx));
+      li.addEventListener("mouseenter", () => { if (performance.now() > quietUntil) focusGraph("a" + t.idx); });
       li.addEventListener("mouseleave", () => focusGraph(null));
       host.append(li);
     });
@@ -677,6 +687,11 @@
         el("span", { text: state.route ? "" : " Pick a held-out task or type one: the subgraph Waypoint walks in HydraDB appears here." })));
       return;
     }
+    host.classList.remove("plist");
+    if (host.clientWidth < 600) {
+      renderPathList(host);
+      return;
+    }
     const W = Math.max(640, host.clientWidth);
     const H = Math.max(360, host.clientHeight);
     const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -721,8 +736,9 @@
     const rowsEv = groups.reduce((s, gr) => s + Math.max(1, gr.items.length) + (gr.more ? 0.6 : 0), 0);
     const gapG = 14;
     const rowH = Math.max(22, Math.min(34, (H - pad.t - pad.b - gapG * (groups.length - 1)) / rowsEv));
-    const cardH = Math.min(26, rowH - 4);
-    const colX = { q: 0, p0: 76, p1: Math.round(W * 0.31), e0: Math.round(W * 0.365), e1: Math.round(W * 0.665), a0: Math.round(W * 0.735) };
+    const cardH = Math.min(30, rowH - 4);
+    const twoLine = cardH >= 28;
+    const colX = { q: 0, p0: 76, p1: Math.round(W * 0.29), e0: Math.round(W * 0.34), e1: Math.round(W * 0.6), a0: Math.round(W * 0.745) };
     colX.a1 = W - 2;
     const pos = new Map();
     let y = pad.t;
@@ -774,15 +790,30 @@
       const isNew = prevEdges && !prevEdges.has("q>" + it.id);
       link(gr.id, it.id, colX.p1, gr.y, colX.e0, pos.get(it.id).y, ty + (isNew ? " new" : ""), 1 + 5 * (maxW[ty] ? w / maxW[ty] : 0.3), (ty === "similar" ? "SIMILAR" : "MATCH") + " · " + w.toFixed(2));
     }
-    for (const e of edges) {
+    const last = edges.filter((e) => {
       const ty = String(e.type).toLowerCase();
-      if (ty !== "used" && ty !== "needs") continue;
-      if (!shown.has(e.source) || !pos.has(e.target)) continue;
+      return (ty === "used" || ty === "needs") && shown.has(e.source) && pos.has(e.target);
+    });
+    const port = (key, other, half) => {
+      const groupsBy = new Map();
+      for (const e of last) (groupsBy.get(e[key]) || groupsBy.set(e[key], []).get(e[key])).push(e);
+      const off = new Map();
+      for (const list of groupsBy.values()) {
+        list.sort((x, y) => pos.get(x[other]).y - pos.get(y[other]).y);
+        const n = list.length;
+        list.forEach((e, i) => off.set(e, n > 1 ? -half + (2 * half * i) / (n - 1) : 0));
+      }
+      return off;
+    };
+    const outOff = port("source", "target", Math.max(0, cardH / 2 - 5));
+    const inOff = port("target", "source", Math.max(0, Math.min(30, apiRow - 6) / 2 - 5));
+    for (const e of last) {
+      const ty = String(e.type).toLowerCase();
       const t = byId.get(e.target);
       const sel = rankWp.has(apiIdx(t)) && rankWp.get(apiIdx(t)) < K;
       const isNew = prevEdges && !prevEdges.has(e.source + ">" + e.target);
       const w = isNum(e.w) ? Math.abs(e.w) : 0;
-      link(e.source, e.target, colX.e1, pos.get(e.source).y, colX.a0, pos.get(e.target).y, ty + (sel ? " sel" : "") + (isNew ? " new" : ""), 1 + 3.5 * (maxW[ty] ? w / maxW[ty] : 0.3), e.type + (isNum(e.w) ? " · w " + e.w.toFixed(2) : ""));
+      link(e.source, e.target, colX.e1, pos.get(e.source).y + outOff.get(e), colX.a0, pos.get(e.target).y + inOff.get(e), ty + (sel ? " sel" : "") + (isNew ? " new" : ""), 0.8 + 2.6 * (maxW[ty] ? w / maxW[ty] : 0.3), e.type + (isNum(e.w) ? " · w " + e.w.toFixed(2) : ""));
     }
 
     const card = (id, x1, x2, cy, cls, kids, tipFn) => {
@@ -790,7 +821,7 @@
       gEl.append(svg("rect", { x: x1, y: cy - cardH / 2, width: x2 - x1, height: cardH, rx: 6, class: "card" }));
       for (const k of kids) gEl.append(k);
       if (tipFn) {
-        const on = (ev) => { focusGraph(id); showTip(ev, ...tipFn()); };
+        const on = (ev) => { if (performance.now() < quietUntil) return; focusGraph(id); showTip(ev, ...tipFn()); };
         gEl.addEventListener("mouseenter", on);
         gEl.addEventListener("mousemove", (ev) => moveTip(ev));
         gEl.addEventListener("mouseleave", () => { focusGraph(null); hideTip(); });
@@ -801,6 +832,15 @@
       return gEl;
     };
     const chars = (px) => Math.max(6, Math.floor(px / 6.4));
+    const evLabel = (x, cy, text, n) => {
+      if (!twoLine || text.length <= n) return svg("text", { x, y: cy + 4, class: "lbl", text: trunc(text, n) });
+      const m = Math.floor(n * 1.12);
+      let cut = text.lastIndexOf(" ", m);
+      if (cut < m * 0.6) cut = m;
+      return svg("text", { x, y: cy - 2, class: "lbl two" },
+        svg("tspan", { x, text: text.slice(0, cut).trim() }),
+        svg("tspan", { x, dy: 12.5, text: trunc(text.slice(cut).trim(), m) }));
+    };
 
     const qg = svg("g", { class: "node query", "data-id": "q" });
     qg.append(svg("rect", { x: colX.q, y: qY - 14, width: 64, height: 28, rx: 14, class: "q" }));
@@ -811,10 +851,10 @@
 
     for (const gr of groups) {
       const isPart = gr.part != null;
-      const label = isPart ? trunc(gist(gr.text), chars(colX.p1 - colX.p0 - 30)) : gr.label;
+      const label = isPart ? gist(gr.text) : gr.label;
       card(gr.id, colX.p0, colX.p1, gr.y, "grp " + (isPart ? "part" : "whole"), [
         isPart ? svg("text", { x: colX.p0 + 8, y: gr.y + 4, class: "pn", text: String(gr.part + 1) }) : svg("circle", { cx: colX.p0 + 11, cy: gr.y, r: 4, class: "t" }),
-        svg("text", { x: colX.p0 + 22, y: gr.y + 4, class: "lbl", text: isPart ? label : gr.label }),
+        isPart ? evLabel(colX.p0 + 22, gr.y, label, chars(colX.p1 - colX.p0 - 30)) : svg("text", { x: colX.p0 + 22, y: gr.y + 4, class: "lbl", text: gr.label }),
       ], () => isPart
         ? [el("div", { class: "th", text: "Part " + (gr.part + 1) + " of your task" }), el("div", { class: "tt", text: "“" + trunc(gr.text, 300) + "”" }), el("div", { class: "ts", text: "matched against past Clauses → NEEDS edges" })]
         : [el("div", { class: "th", text: "Your whole task" }), el("div", { class: "ts", text: "matched against past Tasks → USED edges" })]);
@@ -832,7 +872,7 @@
         const mine = taughtTask(id);
         card(it.id, colX.e0, colX.e1, p.y, "ev task" + (isNew ? " new" : "") + (mine ? " taught" : ""), [
           svg("circle", { cx: colX.e0 + 11, cy: p.y, r: 4, class: "t" }),
-          svg("text", { x: colX.e0 + 22, y: p.y + 4, class: "lbl", text: (mine ? "Your lesson · " : "") + trunc(gist(t.text || it.text || "Task " + id), chars(colX.e1 - colX.e0 - 64) - (mine ? 14 : 0)) }),
+          evLabel(colX.e0 + 22, p.y, (mine ? "Your lesson · " : "") + gist(t.text || it.text || "Task " + id), chars(colX.e1 - colX.e0 - 64)),
           isNum(w) ? svg("text", { x: colX.e1 - 8, y: p.y + 4, "text-anchor": "end", class: "wv", text: w.toFixed(2) }) : null,
         ].filter(Boolean), () => nodeTip(it, ctx));
       } else {
@@ -840,7 +880,7 @@
         const mineC = taughtTask(cl.task);
         card(it.id, colX.e0, colX.e1, p.y, "ev clause" + (isNew ? " new" : "") + (mineC ? " taught" : ""), [
           svg("rect", { x: colX.e0 + 7.5, y: p.y - 3.5, width: 7, height: 7, rx: 1, transform: "rotate(45 " + (colX.e0 + 11) + " " + p.y + ")", class: "c" }),
-          svg("text", { x: colX.e0 + 22, y: p.y + 4, class: "lbl", text: (mineC ? "Your lesson · " : "") + "“" + trunc(gist(cl.text || it.text || "Clause"), chars(colX.e1 - colX.e0 - 70) - (mineC ? 14 : 0)) + "”" }),
+          evLabel(colX.e0 + 22, p.y, (mineC ? "Your lesson · " : "") + "“" + gist(cl.text || it.text || "Clause") + "”", chars(colX.e1 - colX.e0 - 64)),
           isNum(w) ? svg("text", { x: colX.e1 - 8, y: p.y + 4, "text-anchor": "end", class: "wv", text: w.toFixed(2) }) : null,
         ].filter(Boolean), () => nodeTip(it, ctx));
       }
@@ -851,6 +891,7 @@
     const apiName = (i) => (apiInfo.get(i) && apiInfo.get(i).name) || (byId.get("a" + i) && byId.get("a" + i).label) || "API " + i;
     const ctx = { tasks: taskInfo, clauses: clauseInfo, clausePart: new Map(clausesAll.map((n) => [n.id, partOf(n)])), apiInfo, apiName, rankWp, rankBm, gold, simW: w0 };
     const apiCardH = Math.min(30, apiRow - 6);
+    const maxScore = Math.max(0, ...(r.tools || []).map((t) => (t && isNum(t.score) ? t.score : 0)));
     for (const n of apiCol) {
       const idx = apiIdx(n);
       const p = pos.get(n.id);
@@ -860,12 +901,26 @@
       const isNew = prevNodes && !prevNodes.has(n.id);
       const gEl = card(n.id, colX.a0, colX.a1, p.y, "api" + (sel ? " sel" : "") + (needed ? " needed" : "") + (isNew ? " new" : ""), [
         svg("text", { x: colX.a0 + 10, y: p.y + 4, class: "rk", text: sel ? String(rk + 1) : "–" }),
-        svg("text", { x: colX.a0 + 26, y: p.y + 4, class: "lbl", text: trunc(apiName(idx), chars(colX.a1 - colX.a0 - 60)) }),
-        needed ? svg("text", { x: colX.a1 - 10, y: p.y + 4, "text-anchor": "end", class: "ck", text: "✓" }) : null,
+        svg("text", { x: colX.a0 + 26, y: p.y + 4, class: "lbl", text: truncMid(apiName(idx), chars(colX.a1 - colX.a0 - (sel ? 70 : 40) - (needed ? 14 : 0))) }),
+        needed ? svg("text", { x: colX.a1 - (sel ? 46 : 10), y: p.y + 4, "text-anchor": "end", class: "ck", text: "✓" }) : null,
+        sel && isNum((apiInfo.get(idx) || {}).score) ? svg("text", { x: colX.a1 - 8, y: p.y + 4, "text-anchor": "end", class: "sc", text: apiInfo.get(idx).score.toFixed(1) }) : null,
       ].filter(Boolean), () => nodeTip(n, ctx));
       const rect = gEl.querySelector("rect");
       rect.setAttribute("y", p.y - apiCardH / 2);
       rect.setAttribute("height", apiCardH);
+      const info = apiInfo.get(idx);
+      if (sel && info && maxScore > 0) {
+        const v = voteOf(info);
+        const tot = v.task + v.clause + v.text || 1;
+        const span = (colX.a1 - colX.a0 - 12) * Math.min(1, (info.score || tot) / maxScore);
+        let x = colX.a0 + 6;
+        for (const k of VOTE_KINDS) {
+          if (!(v[k] > 0)) continue;
+          const w = span * (v[k] / tot);
+          gEl.append(svg("rect", { x, y: p.y + apiCardH / 2 - 4, width: Math.max(1, w), height: 2.5, rx: 1, class: "vb v-" + k }));
+          x += w;
+        }
+      }
     }
     if (others.length) nodeLayer.append(svg("text", { x: colX.a0 + 2, y: pos.get(others[0].id).y - apiRow / 2 - 4, class: "more", text: "reached, not loaded" }));
     host.append(root);
@@ -876,6 +931,46 @@
     const partNodes = {};
     for (const gr of groups) if (gr.part != null) partNodes[gr.part] = [gr.id];
     gIndex = { colOf, partNodes };
+  }
+
+  function renderPathList(host) {
+    const r = state.route || {};
+    const tools = (r.tools || []).filter(Boolean).slice(0, K);
+    const tasks = new Map((r.similar_tasks || []).filter(Boolean).map((t) => [String(t.id), t]));
+    const clauses = new Map((r.clauses || []).filter(Boolean).map((c) => [String(c.id), c]));
+    const gold = goldSet();
+    const maxScore = Math.max(0, ...tools.map((t) => (isNum(t.score) ? t.score : 0)));
+    host.classList.add("plist");
+    host.replaceChildren(...tools.map((t, i) => {
+      const paths = (Array.isArray(t.paths) ? t.paths : []).filter((p) => p && (p.via === "task" || p.via === "clause"))
+        .sort((a, b) => (b.c ?? b.w ?? 0) - (a.c ?? a.w ?? 0));
+      const v = voteOf(t);
+      const ev = paths.slice(0, 3).map((p) => {
+        if (p.via === "task") {
+          const tk = tasks.get(String(p.task)) || {};
+          const mine = taughtTask(p.task);
+          return el("li", { class: "pe task" + (mine ? " taught" : "") }, el("i", { class: "dot t", "aria-hidden": "true" }),
+            el("span", { class: "pt", text: (mine ? "Your lesson · " : "Past task · ") + trunc(gist(tk.text || "Task " + p.task), 70) }),
+            isNum(p.c ?? p.w) && el("span", { class: "pw", text: (p.c ?? p.w).toFixed(2) }));
+        }
+        const cl = clauses.get(String(p.clause)) || {};
+        const mine = taughtTask(cl.task);
+        return el("li", { class: "pe clause" + (mine ? " taught" : "") }, el("i", { class: "dot c", "aria-hidden": "true" }),
+          el("span", { class: "pt", text: (isNum(cl.part) && (r.parts || []).length > 1 ? "Part " + (cl.part + 1) + " · " : "") + "“" + trunc(gist(cl.text || "Clause"), 64) + "”" }),
+          isNum(p.c ?? p.w) && el("span", { class: "pw", text: (p.c ?? p.w).toFixed(2) }));
+      });
+      const more = paths.length - ev.length;
+      return el("section", { class: "pcard" + (gold && gold.has(t.idx) ? " needed" : "") },
+        el("div", { class: "ph2" },
+          el("span", { class: "prk", text: String(i + 1) }),
+          el("b", { text: t.name || "API " + t.idx }),
+          gold && gold.has(t.idx) && el("span", { class: "gold", title: "This task truly needed this tool", text: "✓" }),
+          isNum(t.score) && el("span", { class: "psc", text: t.score.toFixed(1) })),
+        maxScore > 0 && el("div", { class: "pbar", role: "img", "aria-label": "vote: past tasks " + v.task.toFixed(2) + ", clauses " + v.clause.toFixed(2) + ", text " + v.text.toFixed(2) },
+          ...VOTE_KINDS.filter((k) => v[k] > 0).map((k) => el("span", { class: "vs v-" + k, style: "width:" + ((v[k] / maxScore) * 100).toFixed(1) + "%" }))),
+        ev.length ? el("ul", { class: "pev" }, ev) : el("p", { class: "pnone", text: "Reached by text match only" }),
+        more > 0 && el("p", { class: "pmore", text: "+" + more + " more matches also vote" }));
+    }));
   }
 
   function nodeTip(n, ctx) {

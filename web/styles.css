@@ -6,7 +6,7 @@
   --line2: #2a3446;
   --text: #e7ebf3;
   --muted: #8c95a8;
-  --dim: #5d6679;
+  --dim: #7d879c;
   --wp: #5aa9ff;
   --wp-soft: rgba(90, 169, 255, 0.14);
   --bm: #8a92a3;
@@ -162,7 +162,7 @@ a:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visib
 /* workspace */
 .work {
   display: grid;
-  grid-template-columns: minmax(400px, 0.86fr) minmax(0, 1.14fr);
+  grid-template-columns: minmax(400px, 0.62fr) minmax(0, 1.38fr);
   gap: 14px;
   padding: 14px 16px;
   height: calc(100vh - 56px);
@@ -276,6 +276,8 @@ a:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visib
 }
 .btn.primary { background: var(--wp); border-color: var(--wp); color: #06101d; }
 .btn.teach { border-color: rgba(52, 211, 153, 0.5); color: var(--ok); background: var(--ok-soft); }
+.btn.teach:disabled { opacity: 0.85; border-style: dashed; background: transparent; color: #8fd9b9; }
+.btn.teach:not(:disabled) { box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15); }
 .btn:hover:not(:disabled) { filter: brightness(1.12); }
 .btn:disabled { opacity: 0.45; cursor: default; }
 .status { font-size: 11.5px; color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -363,7 +365,9 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
 .tg:checked::after { content: ""; width: 4px; height: 8px; border: solid #04150e; border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
 
 .teach-note { margin: 0; font-size: 12px; color: var(--muted); background: var(--panel2); border: 1px dashed var(--line2); border-radius: 8px; padding: 8px 10px; line-height: 1.45; }
-.lesson-chip { margin-left: 8px; font: 700 10px var(--mono); color: #04150e; background: var(--ok); border-radius: 4px; padding: 1px 5px; vertical-align: 1px; letter-spacing: 0.02em; }
+.tname-row { display: flex; align-items: center; min-width: 0; }
+.tname-row .tname { min-width: 0; }
+.lesson-chip { flex: none; margin-left: 8px; font: 700 10px var(--mono); color: #04150e; background: var(--ok); border-radius: 4px; padding: 1px 5px; vertical-align: 1px; letter-spacing: 0.02em; }
 .status.lesson { display: block; flex: 1 1 100%; white-space: normal; }
 .status.lesson.busy { display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line2); border-top-color: var(--ok); animation: spin 0.8s linear infinite; flex: none; }
@@ -391,7 +395,7 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
 @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 .work.busy .list, .work.busy #graph, .work.busy #tokens, .work.busy .parts, .work.busy .teach { opacity: 0.45; transition: opacity 0.2s; }
 .work.busy #p-graph { position: relative; }
-.work.busy #p-graph::after { content: "Walking the graph in HydraDB…"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 600 12.5px var(--sans); color: var(--text); background: var(--panel2); border: 1px solid var(--line2); border-radius: 999px; padding: 8px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+.work.busy #p-graph::after { content: "Walking the graph in HydraDB…"; position: absolute; right: 16px; top: 12px; font: 600 12.5px var(--sans); color: var(--text); background: var(--panel2); border: 1px solid var(--line2); border-radius: 999px; padding: 8px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
 .fail { list-style: none; display: grid; gap: 6px; justify-items: start; padding: 14px 12px; border: 1px solid rgba(248, 113, 113, 0.45); background: rgba(248, 113, 113, 0.08); border-radius: 8px; margin: 4px 0; }
 .fail b { color: var(--bad); font-size: 13px; }
 .fail span { font-size: 12.5px; color: var(--text); line-height: 1.45; }
@@ -401,7 +405,23 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
 .missed { list-style: none; display: flex; gap: 8px; align-items: baseline; font-size: 12px; color: var(--text); padding: 6px 6px 4px; margin-top: 2px; border-top: 1px dashed rgba(248, 113, 113, 0.4); }
 .missed .x { color: var(--bad); font-weight: 800; }
 .missed b { color: var(--bad); font-weight: 600; }
-.ghint { display: none; }
+.graph.plist { display: grid; gap: 10px; align-content: start; }
+.pcard { border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px; background: var(--panel2); }
+.pcard.needed { border-color: rgba(52, 211, 153, 0.5); }
+.ph2 { display: flex; align-items: center; gap: 8px; }
+.ph2 b { font-size: 13.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prk { font: 700 11px var(--mono); color: var(--wp); }
+.psc { margin-left: auto; font: 700 12px var(--mono); color: var(--wp); }
+.pbar { display: flex; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; margin: 8px 0 6px; }
+.pbar .vs { display: block; height: 100%; }
+.pbar .v-task { background: var(--task); } .pbar .v-clause { background: var(--clause); } .pbar .v-text { background: #8a92a3; }
+.pev { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.pe { display: grid; grid-template-columns: 10px 1fr auto; gap: 8px; align-items: baseline; font-size: 12px; color: #c3cad8; }
+.pe .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.pe .dot.t { background: var(--task); } .pe .dot.c { background: var(--clause); border-radius: 1px; transform: rotate(45deg); }
+.pe.taught .pt { color: #a7f3d0; font-weight: 600; }
+.pw { font: 11px var(--mono); color: var(--muted); }
+.pmore, .pnone { margin: 4px 0 0 18px; font-size: 11.5px; color: var(--muted); font-style: italic; }
 
 /* frame 3: graph */
 .glegend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11.5px; color: var(--muted); margin: -2px 0 8px; }
@@ -439,6 +459,7 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
 .graph .node .pn { font: 700 11px var(--mono); fill: var(--clause); }
 .graph .node .lbl { font: 11.5px var(--sans); fill: var(--text); }
 .graph .node.ev .lbl { fill: #c3cad8; }
+.graph .node .lbl.two { font-size: 11px; }
 .graph .node .wv, .graph .node .rk { font: 10.5px var(--mono); fill: var(--muted); }
 .graph .node.api .card { fill: var(--bg); stroke: var(--line); }
 .graph .node.api .lbl { fill: var(--muted); }
@@ -448,6 +469,10 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
 .graph .node.api.needed .card { stroke: var(--ok); }
 .graph .node .ck { fill: var(--ok); font-weight: 800; font-size: 12px; }
 .graph .node.new .card { stroke: var(--ok); stroke-width: 2; }
+.graph .node .sc { font: 700 11px var(--mono); fill: var(--wp); }
+.graph .node .vb.v-task { fill: var(--task); }
+.graph .node .vb.v-clause { fill: var(--clause); }
+.graph .node .vb.v-text { fill: #8a92a3; }
 .graph .more { font: 11px var(--sans); fill: var(--muted); font-style: italic; }
 .graph.focus .edge:not(.hl), .graph.focus .node:not(.hl) { opacity: 0.18; }
 .graph.focus .edge.hl { opacity: 0.95; }
@@ -507,7 +532,7 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
   .graph { min-height: 520px; }
 }
 @media (max-width: 640px) {
-  .top { padding: 0 12px; gap: 8px; }
+  .top { padding: 0 12px; gap: 8px; position: static; }
   .jump { display: none; }
   .name { font-size: 17px; }
   .meta { gap: 8px; }
@@ -520,7 +545,8 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
   .board-h { flex-direction: column; gap: 2px; }
   .rk { grid-template-columns: 1fr 64px; grid-template-areas: "n v" "t t"; gap: 6px 10px; }
   .rk-n { grid-area: n; } .rk-v { grid-area: v; } .rk-t { grid-area: t; }
-  .rk.wp { margin: -4px -8px; padding: 10px 8px; }
+  .rk.wp { margin: 0; padding: 10px; }
+  .rk.wp .rk-v { font-size: 22px; }
   .work { padding: 10px 8px; }
   .panel { padding: 12px 10px; }
   .examples { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -529,6 +555,6 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
   .learn .chart { min-height: 280px; }
   .slices { grid-template-columns: 1fr; }
   .glegend { gap: 8px; }
-  .graph { overflow-x: auto; min-height: 520px; -webkit-overflow-scrolling: touch; }
-  .ghint { display: block; font-size: 11.5px; color: var(--muted); margin: 0 0 6px; }
+  .graph { min-height: 0; }
+  .glegend span.muted { display: none; }
 }
