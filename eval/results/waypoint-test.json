@@ -12,7 +12,10 @@
     "w_exp": 4.0,
     "w_needs": 1.0,
     "w_rej": 0.3,
-    "sim_power": 1.0
+    "sim_power": 1.0,
+    "w_new": 0.5,
+    "new_tau": 0.3,
+    "new_top": 10
   },
   "metric": "Completeness@5: share of held-out tasks whose every needed tool is in the top 5",
   "baseline": "stateless BM25 over tool descriptions (Waypoint's entry-point index)",
@@ -86,15 +89,15 @@
         }
       },
       "latency_ms": {
-        "p50": 1.5,
-        "p95": 4.6
+        "p50": 1.3,
+        "p95": 3.9
       }
     },
     {
       "runs": 250,
       "waypoint": {
-        "completeness": 0.2773,
-        "recall": 0.5739,
+        "completeness": 0.3203,
+        "recall": 0.6104,
         "n": 2373
       },
       "bm25": {
@@ -104,7 +107,7 @@
       },
       "flat_memory": {
         "completeness": 0.2705,
-        "recall": 0.5564,
+        "recall": 0.5563,
         "n": 2373
       },
       "flat_knn": {
@@ -115,8 +118,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.3233,
-            "recall": 0.6041,
+            "completeness": 0.3609,
+            "recall": 0.6334,
             "n": 1865
           },
           "bm25": {
@@ -126,7 +129,7 @@
           },
           "flat_memory": {
             "completeness": 0.2949,
-            "recall": 0.5685,
+            "recall": 0.5684,
             "n": 1865
           },
           "flat_knn": {
@@ -137,8 +140,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.1083,
-            "recall": 0.4631,
+            "completeness": 0.1713,
+            "recall": 0.5261,
             "n": 508
           },
           "bm25": {
@@ -159,15 +162,15 @@
         }
       },
       "latency_ms": {
-        "p50": 40.6,
-        "p95": 63.5
+        "p50": 76.3,
+        "p95": 159.9
       }
     },
     {
       "runs": 500,
       "waypoint": {
-        "completeness": 0.3295,
-        "recall": 0.6181,
+        "completeness": 0.3628,
+        "recall": 0.6455,
         "n": 2373
       },
       "bm25": {
@@ -177,7 +180,7 @@
       },
       "flat_memory": {
         "completeness": 0.3038,
-        "recall": 0.5802,
+        "recall": 0.58,
         "n": 2373
       },
       "flat_knn": {
@@ -188,8 +191,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.3818,
-            "recall": 0.6484,
+            "completeness": 0.4038,
+            "recall": 0.6667,
             "n": 1865
           },
           "bm25": {
@@ -199,7 +202,7 @@
           },
           "flat_memory": {
             "completeness": 0.3319,
-            "recall": 0.5954,
+            "recall": 0.5953,
             "n": 1865
           },
           "flat_knn": {
@@ -210,8 +213,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.1378,
-            "recall": 0.5067,
+            "completeness": 0.2126,
+            "recall": 0.5677,
             "n": 508
           },
           "bm25": {
@@ -232,15 +235,15 @@
         }
       },
       "latency_ms": {
-        "p50": 52.7,
-        "p95": 84.8
+        "p50": 87.8,
+        "p95": 192.3
       }
     },
     {
       "runs": 1000,
       "waypoint": {
-        "completeness": 0.3932,
-        "recall": 0.659,
+        "completeness": 0.4134,
+        "recall": 0.6745,
         "n": 2373
       },
       "bm25": {
@@ -261,8 +264,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.4509,
-            "recall": 0.6904,
+            "completeness": 0.4622,
+            "recall": 0.6996,
             "n": 1865
           },
           "bm25": {
@@ -283,8 +286,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.1811,
-            "recall": 0.5435,
+            "completeness": 0.2343,
+            "recall": 0.5822,
             "n": 508
           },
           "bm25": {
@@ -305,15 +308,15 @@
         }
       },
       "latency_ms": {
-        "p50": 38.4,
-        "p95": 60.3
+        "p50": 80.3,
+        "p95": 169.8
       }
     },
     {
       "runs": 2000,
       "waypoint": {
-        "completeness": 0.448,
-        "recall": 0.6923,
+        "completeness": 0.4657,
+        "recall": 0.7028,
         "n": 2373
       },
       "bm25": {
@@ -334,8 +337,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.5094,
-            "recall": 0.7223,
+            "completeness": 0.5244,
+            "recall": 0.7306,
             "n": 1865
           },
           "bm25": {
@@ -356,8 +359,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.2224,
-            "recall": 0.5825,
+            "completeness": 0.25,
+            "recall": 0.6009,
             "n": 508
           },
           "bm25": {
@@ -378,15 +381,15 @@
         }
       },
       "latency_ms": {
-        "p50": 42.6,
-        "p95": 67.2
+        "p50": 80.7,
+        "p95": 181.7
       }
     },
     {
       "runs": 4000,
       "waypoint": {
-        "completeness": 0.5255,
-        "recall": 0.7447,
+        "completeness": 0.531,
+        "recall": 0.7475,
         "n": 2373
       },
       "bm25": {
@@ -407,8 +410,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.5882,
-            "recall": 0.7749,
+            "completeness": 0.5887,
+            "recall": 0.7748,
             "n": 1865
           },
           "bm25": {
@@ -429,8 +432,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.2953,
-            "recall": 0.634,
+            "completeness": 0.3189,
+            "recall": 0.6471,
             "n": 508
           },
           "bm25": {
@@ -451,15 +454,15 @@
         }
       },
       "latency_ms": {
-        "p50": 51.1,
-        "p95": 77.0
+        "p50": 105.3,
+        "p95": 240.9
       }
     },
     {
       "runs": 8000,
       "waypoint": {
-        "completeness": 0.6098,
-        "recall": 0.7898,
+        "completeness": 0.6123,
+        "recall": 0.7921,
         "n": 2373
       },
       "bm25": {
@@ -480,8 +483,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.6869,
-            "recall": 0.8246,
+            "completeness": 0.6858,
+            "recall": 0.8247,
             "n": 1865
           },
           "bm25": {
@@ -502,8 +505,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.3268,
-            "recall": 0.6619,
+            "completeness": 0.3425,
+            "recall": 0.6727,
             "n": 508
           },
           "bm25": {
@@ -524,15 +527,15 @@
         }
       },
       "latency_ms": {
-        "p50": 63.0,
-        "p95": 96.4
+        "p50": 98.7,
+        "p95": 237.7
       }
     },
     {
       "runs": 12000,
       "waypoint": {
-        "completeness": 0.6469,
-        "recall": 0.8086,
+        "completeness": 0.6494,
+        "recall": 0.8102,
         "n": 2373
       },
       "bm25": {
@@ -554,7 +557,7 @@
         "seen_toolset": {
           "waypoint": {
             "completeness": 0.7249,
-            "recall": 0.8438,
+            "recall": 0.8441,
             "n": 1865
           },
           "bm25": {
@@ -575,8 +578,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.3602,
-            "recall": 0.6793,
+            "completeness": 0.372,
+            "recall": 0.6855,
             "n": 508
           },
           "bm25": {
@@ -597,15 +600,15 @@
         }
       },
       "latency_ms": {
-        "p50": 62.5,
-        "p95": 93.3
+        "p50": 102.7,
+        "p95": 240.2
       }
     },
     {
       "runs": 16000,
       "waypoint": {
-        "completeness": 0.6793,
-        "recall": 0.8276,
+        "completeness": 0.6823,
+        "recall": 0.8289,
         "n": 2373
       },
       "bm25": {
@@ -626,8 +629,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.7576,
-            "recall": 0.8629,
+            "completeness": 0.7582,
+            "recall": 0.863,
             "n": 1865
           },
           "bm25": {
@@ -648,8 +651,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.3917,
-            "recall": 0.6982,
+            "completeness": 0.4035,
+            "recall": 0.7039,
             "n": 508
           },
           "bm25": {
@@ -670,15 +673,15 @@
         }
       },
       "latency_ms": {
-        "p50": 77.4,
-        "p95": 116.7
+        "p50": 84.5,
+        "p95": 192.8
       }
     },
     {
       "runs": 19361,
       "waypoint": {
-        "completeness": 0.7033,
-        "recall": 0.8389,
+        "completeness": 0.7071,
+        "recall": 0.841,
         "n": 2373
       },
       "bm25": {
@@ -699,8 +702,8 @@
       "slices": {
         "seen_toolset": {
           "waypoint": {
-            "completeness": 0.7818,
-            "recall": 0.8737,
+            "completeness": 0.7828,
+            "recall": 0.8744,
             "n": 1865
           },
           "bm25": {
@@ -721,8 +724,8 @@
         },
         "novel_toolset": {
           "waypoint": {
-            "completeness": 0.4154,
-            "recall": 0.7111,
+            "completeness": 0.4291,
+            "recall": 0.7183,
             "n": 508
           },
           "bm25": {
@@ -743,38 +746,38 @@
         }
       },
       "latency_ms": {
-        "p50": 68.9,
-        "p95": 103.2
+        "p50": 92.5,
+        "p95": 200.0
       }
     }
   ],
   "headline": {
     "baseline": 0.2672,
-    "waypoint": 0.7033,
+    "waypoint": 0.7071,
     "flat_memory": 0.603,
     "flat_knn": 0.6987,
     "recall5_baseline": 0.5595,
-    "recall5_waypoint": 0.8389,
+    "recall5_waypoint": 0.841,
     "tokens_per_task_waypoint": 714,
     "tokens_catalog": 200953,
-    "latency_p50_ms": 68.9,
-    "latency_p95_ms": 103.2
+    "latency_p50_ms": 92.5,
+    "latency_p95_ms": 200.0
   },
   "slices": {
     "seen_toolset": {
       "n": 1865,
-      "waypoint": 0.7818,
+      "waypoint": 0.7828,
       "bm25": 0.2777,
       "flat_memory": 0.6783,
       "flat_knn": 0.7845
     },
     "novel_toolset": {
       "n": 508,
-      "waypoint": 0.4154,
+      "waypoint": 0.4291,
       "bm25": 0.2283,
       "flat_memory": 0.3268,
       "flat_knn": 0.3839
     }
   },
-  "generated_at": "2026-11-15T22:34:21+00:00"
+  "generated_at": "2026-11-16T06:08:09+00:00"
 }

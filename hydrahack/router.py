@@ -25,6 +25,9 @@ class Params:
     w_needs: float = 1.0
     w_rej: float = 0.3
     sim_power: float = 1.0
+    w_new: float = 0.5
+    new_tau: float = 0.3
+    new_top: int = 10
 
 
 _CLAUSE = re.compile(
@@ -137,6 +140,9 @@ class Router:
                         }
                     )
 
+        if p.w_new:
+            self._transfer_to_cold(text, score, paths)
+
         factor: dict[int, float] = {}
         if p.w_rej:
             cand = [a for a, _ in score.most_common(k * 3)]
@@ -147,6 +153,32 @@ class Router:
         route = self._finish(score, k, tasks, matched, paths)
         route.factors = {a: factor.get(a, 1.0) for a in route.tools}
         return route
+
+    def _transfer_to_cold(self, text: str, score: Counter, paths: dict) -> None:
+        """Hand a share of a tool's learned vote to endpoints of the same Tool that no run has used
+        yet, when the task's text matches the new endpoint at least as well as the voted one.
+        A store of past runs has nothing to copy for such an endpoint; the graph reaches it
+        through (:Api)<-[:HAS_API]-(:Tool)-[:HAS_API]->(:Api)."""
+        p = self.p
+        learned = {
+            a: sum(x["c"] for x in ps if x["via"] in ("task", "clause")) for a, ps in paths.items()
+        }
+        top = sorted((a for a, e in learned.items() if e > 0), key=score.__getitem__, reverse=True)
+        learned = {a: learned[a] for a in top[: p.new_top]}
+        siblings = self.store.cold_siblings(list(learned))
+        if not siblings:
+            return
+        lex = self.api_index.search(text, len(self.apis))
+        ceiling = lex[0][1] if lex else 1.0
+        rel = {a: s / ceiling for a, s in lex}
+        for a, cold in siblings.items():
+            for s in cold:
+                rs = rel.get(s, 0.0)
+                if rs < p.new_tau or rs <= rel.get(a, 0.0):
+                    continue
+                c = p.w_new * learned[a] * rs
+                score[s] += c
+                paths.setdefault(s, []).append({"via": "tool", "api": a, "w": round(rs, 3), "c": c})
 
     def _finish(self, score, k, tasks, matched, paths) -> Route:
         top = [a for a, _ in score.most_common(k)]
