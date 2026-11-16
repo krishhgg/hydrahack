@@ -139,7 +139,7 @@ while [ "$SECONDS" -lt 1200 ]; do
   fi
   hs=$SECONDS
   rc=0
-  timeout -k 2 20 "${drop[@]}" /usr/local/bin/hydradb-healthcheck >/dev/null 2>&1 || rc=$?
+  timeout -k 2 25 "${drop[@]}" python /app/infra/hydradb/healthcheck.py >>/tmp/hc.log 2>&1 || rc=$?
   echo "t=$SECONDS rc=$rc took=$((SECONDS - hs))s" >> /tmp/hc.log
   if [ "$rc" = 0 ]; then
     ready=1
