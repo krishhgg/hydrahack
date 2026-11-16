@@ -47,6 +47,16 @@ warm=$!
 "${drop[@]}" /usr/local/bin/hydradb-entrypoint > >(tee -a /tmp/engine.log) 2>&1 &
 db=$!
 
+# Temporary experiment: a second engine on a fresh empty store, to tell a hang on the baked store
+# from a hang in the environment.
+mkdir -p /tmp/e2/store /tmp/e2/cache
+chown -R 10001:10001 /tmp/e2
+env LOCAL_PATH=/tmp/e2/store GRAPH_DATA_CACHE_DIR=/tmp/e2/cache GRAPH_BOLT_ADDR=127.0.0.1:27687 \
+  GRAPH_HTTP_ADDR=127.0.0.1:28443 GRAPH_ADMIN_ADDR=127.0.0.1:29090 \
+  GRAPH_BOLT_NODE_ADDRESSES=node-0=127.0.0.1:27687 GRAPH_ADVERTISED_BOLT_ADDR=127.0.0.1:27687 \
+  "${drop[@]}" /usr/local/bin/hydradb-entrypoint > /tmp/engine2.log 2>&1 &
+engine2=$!
+
 # Temporary: a snapshot of the engine's state at /__diag on the warm-up listener, because Render's
 # log stream stops forwarding this container's output after the first second.
 (
@@ -61,6 +71,16 @@ db=$!
       echo "readyz: $(timeout 8 bash -c 'exec 3<>/dev/tcp/127.0.0.1/9090; printf "GET /readyz HTTP/1.0
 
 " >&3; head -n1 <&3' 2>&1)"
+      pid=$(pgrep -x graph-node | head -n1)
+      echo "--- engine $pid threads (comm state wchan syscall)"
+      for t in /proc/$pid/task/*; do echo "$(cat $t/comm) $(grep State $t/status | cut -c8-9) $(cat $t/wchan 2>/dev/null) $(cut -d' ' -f1 $t/syscall 2>/dev/null)"; done | sort | uniq -c
+      echo "--- engine fds"
+      for f in /proc/$pid/fd/*; do echo "$(basename $f) $(readlink $f)"; done 2>&1 | head -40
+      echo "tcp entries: $(wc -l < /proc/$pid/net/tcp)"
+      echo "--- mounts"
+      grep -E ' (/|/data|/tmp) ' /proc/mounts | cut -c1-90 | head -5
+      echo "--- fresh-store engine: readyz $(timeout 8 bash -c 'exec 3<>/dev/tcp/127.0.0.1/29090; printf "GET /readyz HTTP/1.0\r\n\r\n" >&3; head -n1 <&3' 2>&1)"
+      tail -n 6 /tmp/engine2.log 2>&1 | cut -c1-200
       echo "--- engine log tail"
       tail -n 25 /tmp/engine.log 2>&1 | cut -c1-220
     } > /tmp/diag.tmp 2>&1
@@ -103,7 +123,7 @@ while [ "$SECONDS" -lt 1200 ]; do
 done
 [ "$ready" = 1 ] || { echo "hydradb did not become healthy in 1200s" >&2; diag; exit 1; }
 echo "hydradb healthy"
-kill "$warm" "$diag_worker" 2>/dev/null || true
+kill "$warm" "$diag_worker" "$engine2" 2>/dev/null || true
 wait "$warm" 2>/dev/null || true
 
 cd /app
