@@ -6,6 +6,7 @@ Record at 1080p. Tabs, left to right: the live app ({{LIVE_URL}}), `docs/results
 
 - **Teach exactly once, at the end.** Every Teach click writes a new Task into the live graph (5000000, 5000001, and so on), so a second take starts from a graph that already knows the lesson and the "before" ranking looks better. If you must re-record, change the sports or the coin in the Teach task, or ask the team to reset the graph.
 - Route one example first to warm the indexes (the first route after a cold start can take a second). Then reload the page.
+- The live app runs on Render's free tier (0.1 CPU, 512 MB): a cold start takes about 3 minutes (a ping every 5 minutes keeps it warm), queries take seconds under concurrent use, and Teach writes are lost when the instance restarts. Open the app a few minutes before recording, route one example, and do not run other tabs against it while recording. Do not call the live app fast; the 2-CPU load test in docs/load.md (56.6 req/s) is the load number to cite.
 - Do not quote a fixed latency on camera; the header shows 20 to 45 ms and varies by machine.
 - The three held-out examples below were hand-picked: tasks Waypoint completes and both baselines miss. Call them illustrations, never typical. The representative numbers are the table on the results page.
 - The example buttons under "Held-out test tasks" appear once the demo-queries PR is deployed. Before that, paste the task text into the box; the "needed" ticks and the COMPLETE badge will not show.
