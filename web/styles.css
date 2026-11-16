@@ -22,6 +22,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; }
 body {
   background: radial-gradient(1200px 500px at 70% -200px, rgba(90, 169, 255, 0.07), transparent), var(--bg);
@@ -361,6 +362,47 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
 .tg:checked { background: var(--ok); border-color: var(--ok); }
 .tg:checked::after { content: ""; width: 4px; height: 8px; border: solid #04150e; border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
 
+.teach-note { margin: 0; font-size: 12px; color: var(--muted); background: var(--panel2); border: 1px dashed var(--line2); border-radius: 8px; padding: 8px 10px; line-height: 1.45; }
+.lesson-chip { margin-left: 8px; font: 700 10px var(--mono); color: #04150e; background: var(--ok); border-radius: 4px; padding: 1px 5px; vertical-align: 1px; letter-spacing: 0.02em; }
+.status.lesson { display: block; flex: 1 1 100%; white-space: normal; }
+.status.lesson.busy { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line2); border-top-color: var(--ok); animation: spin 0.8s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.status.lesson.ok { background: var(--ok-soft); border: 1px solid rgba(52, 211, 153, 0.4); border-radius: 10px; padding: 10px 12px; color: var(--text); animation: rowin 1.6s ease-out; }
+.lh2 { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 12.5px; }
+.okdot { width: 18px; height: 18px; border-radius: 50%; background: var(--ok); color: #04150e; display: inline-grid; place-items: center; font-size: 11px; font-weight: 800; flex: none; }
+.lrows { display: grid; gap: 3px; margin: 8px 0 6px 26px; }
+.lr { display: grid; grid-template-columns: minmax(0, 1fr) 120px 170px; gap: 10px; font-size: 12px; align-items: center; }
+.ln { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv { font: 11.5px var(--mono); color: var(--muted); }
+.lv i { font-style: normal; color: var(--dim); }
+.lv b { color: var(--text); }
+.lv.up b { color: var(--ok); }
+.lv .gain { font-style: normal; font-weight: 700; color: #04150e; background: var(--ok); border-radius: 4px; padding: 0 4px; margin-left: 6px; }
+.lfoot { margin-left: 26px; font-size: 11.5px; color: var(--muted); }
+.graph .node.taught .card { stroke: var(--ok); stroke-width: 1.5; fill: rgba(52, 211, 153, 0.1); }
+.graph .node.taught .lbl { fill: #a7f3d0; font-weight: 600; }
+
+.status { display: inline-flex; align-items: center; gap: 7px; }
+.tool.skel { pointer-events: none; }
+.tool.skel span { display: block; height: 10px; border-radius: 4px; background: linear-gradient(90deg, var(--line) 0%, var(--line2) 50%, var(--line) 100%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+.tool.skel .sk-l { width: 70%; height: 12px; }
+.tool.skel .sk-s { width: 60px; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.work.busy .list, .work.busy #graph, .work.busy #tokens, .work.busy .parts, .work.busy .teach { opacity: 0.45; transition: opacity 0.2s; }
+.work.busy #p-graph { position: relative; }
+.work.busy #p-graph::after { content: "Walking the graph in HydraDB…"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 600 12.5px var(--sans); color: var(--text); background: var(--panel2); border: 1px solid var(--line2); border-radius: 999px; padding: 8px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+.fail { list-style: none; display: grid; gap: 6px; justify-items: start; padding: 14px 12px; border: 1px solid rgba(248, 113, 113, 0.45); background: rgba(248, 113, 113, 0.08); border-radius: 8px; margin: 4px 0; }
+.fail b { color: var(--bad); font-size: 13px; }
+.fail span { font-size: 12.5px; color: var(--text); line-height: 1.45; }
+.fail code { font: 11px var(--mono); color: var(--muted); }
+.fail .btn { margin-top: 4px; }
+
+.missed { list-style: none; display: flex; gap: 8px; align-items: baseline; font-size: 12px; color: var(--text); padding: 6px 6px 4px; margin-top: 2px; border-top: 1px dashed rgba(248, 113, 113, 0.4); }
+.missed .x { color: var(--bad); font-weight: 800; }
+.missed b { color: var(--bad); font-weight: 600; }
+.ghint { display: none; }
+
 /* frame 3: graph */
 .glegend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 11.5px; color: var(--muted); margin: -2px 0 8px; }
 .glegend span { display: inline-flex; align-items: center; gap: 5px; }
@@ -487,4 +529,6 @@ ol.tools { list-style: none; margin: 0; padding: 0; }
   .learn .chart { min-height: 280px; }
   .slices { grid-template-columns: 1fr; }
   .glegend { gap: 8px; }
+  .graph { overflow-x: auto; min-height: 520px; -webkit-overflow-scrolling: touch; }
+  .ghint { display: block; font-size: 11.5px; color: var(--muted); margin: 0 0 6px; }
 }

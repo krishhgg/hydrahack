@@ -70,7 +70,8 @@
     </div>
     <div class="teach">
       <button id="teach-btn" class="btn teach" type="button" disabled>Teach Waypoint: these were the tools I needed</button>
-      <span id="teach-status" class="status" role="status" aria-live="polite"></span>
+      <p id="teach-note" class="teach-note" hidden><span aria-hidden="true">🔒</span> Teach is off for held-out test tasks, so eval labels never reach the graph. Edit the text or type your own task to teach.</p>
+      <div id="teach-status" class="status" role="status" aria-live="polite"></div>
     </div>
   </section>
 
@@ -84,6 +85,7 @@
       <span><i class="dot a"></i>not loaded</span>
       <span class="muted">line width = vote weight · hover a tool to trace it</span>
     </div>
+    <p class="ghint">Swipe sideways to follow each path to its tool →</p>
     <div id="graph" class="graph"></div>
     <div id="tokens" class="tokens"></div>
   </section>

@@ -15,6 +15,7 @@
     routedTask: "",
     prev: null,
     checked: new Set(),
+    taught: new Map(),
     busy: false,
   };
 
@@ -365,7 +366,11 @@
   async function doRoute(task, prev) {
     const st = $("#route-status");
     st.className = "status";
-    st.textContent = prev ? "Re-routing with the new edges…" : "Routing…";
+    st.replaceChildren(el("span", { class: "spin", "aria-hidden": "true" }), prev ? "Re-routing with the new edges…" : "Walking the graph in HydraDB…");
+    const work = $("#work");
+    work.classList.add("busy");
+    work.classList.remove("failed");
+    if (!state.route) renderSkeleton();
     try {
       const res = await api("/api/route", { task, k: K });
       state.prev = prev;
@@ -376,18 +381,58 @@
         state.checked = new Set();
         const gold = goldSet();
         if (gold) for (const t of [...(state.route.tools || []), ...(state.route.baseline || [])]) if (gold.has(t.idx)) state.checked.add(t.idx);
-        $("#teach-status").textContent = "";
+        $("#teach-status").replaceChildren();
         $("#teach-status").className = "status";
       }
       setLearned(state.route.learned_tasks);
-      st.textContent = "";
+      st.replaceChildren();
       renderRoute();
       return true;
     } catch (e) {
+      if (!prev) {
+        state.route = null;
+        state.prev = null;
+        state.checked = new Set();
+        renderFailure(task, e);
+      }
       st.className = "status err";
-      st.textContent = "Route failed: " + e.message;
+      st.textContent = "Route failed";
       return false;
+    } finally {
+      work.classList.remove("busy");
     }
+  }
+
+  function friendly(e) {
+    const m = String((e && e.message) || e || "");
+    if (/503/.test(m) && /warm/i.test(m)) return "HydraDB is still loading the experience graph (about a minute after a restart). Try again in a moment.";
+    if (/503/.test(m)) return "HydraDB refused the request. It may be restarting; try again in a moment.";
+    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return "The Waypoint API can't be reached. Check the connection and try again.";
+    return "Something went wrong while routing this task.";
+  }
+
+  function renderSkeleton() {
+    const rows = (n) => Array.from({ length: n }, () => el("li", { class: "tool skel", "aria-hidden": "true" }, el("span"), el("span"), el("span", { class: "sk-l" }), el("span", { class: "sk-s" })));
+    $("#wp-list").replaceChildren(...rows(K));
+    $("#bm-list").replaceChildren(...rows(K));
+  }
+
+  function renderFailure(task, e) {
+    $("#work").classList.add("failed");
+    $("#latency").textContent = "";
+    $("#parts").hidden = true;
+    $("#wp-score").replaceChildren();
+    $("#bm-score").replaceChildren();
+    $("#bm-list").replaceChildren();
+    $("#tokens").replaceChildren();
+    const retry = el("button", { type: "button", class: "btn", onclick: () => route(task) }, "Try again");
+    $("#wp-list").replaceChildren(el("li", { class: "fail", role: "alert" },
+      el("b", { text: "Couldn't route this task" }),
+      el("span", { text: friendly(e) }),
+      el("code", { text: String((e && e.message) || e) }),
+      retry));
+    $("#graph").replaceChildren(el("div", { class: "empty" }, el("b", { text: "No traversal to show" }), el("span", { text: "The route failed, so no subgraph was walked. Nothing stale is shown." })));
+    updateTeach();
   }
 
   function renderRoute() {
@@ -487,12 +532,13 @@
         updateTeach();
       });
       const via = isWp ? voteLabel(t) : [];
+      const lesson = isWp ? lessonOf(t) : null;
       const sub = [t.tool, t.category].filter(Boolean).join(" · ");
       const li = el("li", { class: ["tool", needed && "needed", change && "chg-" + change[0]].filter(Boolean).join(" "), "data-idx": t.idx },
         cb,
         el("span", { class: "rank", text: String(i + 1) }),
         el("div", { class: "tbody" },
-          el("div", { class: "tname", title: t.name || "", text: t.name || "API " + t.idx }),
+          el("div", { class: "tname", title: t.name || "" }, t.name || "API " + t.idx, lesson != null && el("span", { class: "lesson-chip", title: "Reached through Task " + lesson + ", which you taught", text: "your lesson" })),
           el("div", { class: "tsub", title: sub }, sub, via.length > 0 && (sub ? " · " : ""), via.length > 0 && el("span", { class: "via" }, via))),
         el("div", { class: "tmeta" },
           change && el("span", { class: "chg " + change[0], text: change[1] }),
@@ -507,6 +553,15 @@
 
     const score = $(scoreSel);
     if (gold && gold.size && tools.length) {
+      const got = new Set(tools.slice(0, K).map((t) => t.idx));
+      const missed = [...gold].filter((i) => !got.has(i));
+      if (missed.length) {
+        const r = state.route || {};
+        const named = new Map([...(r.tools || []), ...(r.baseline || [])].filter(Boolean).map((t) => [t.idx, t.name]));
+        for (const n of ((r.graph || {}).nodes || [])) if (n && n.kind === "api" && !named.has(apiIdx(n))) named.set(apiIdx(n), n.label);
+        host.append(el("li", { class: "missed" }, el("span", { class: "x", "aria-hidden": "true", text: "✕" }),
+          el("span", {}, "Missed " + missed.length + " needed tool" + (missed.length === 1 ? "" : "s") + ": ", el("b", { text: missed.map((i) => named.get(i) || "API " + i).join(", ") }))));
+      }
       const hit = tools.slice(0, K).filter((t) => gold.has(t.idx)).length;
       const complete = hit === gold.size;
       score.replaceChildren(
@@ -522,9 +577,22 @@
     const n = state.checked.size;
     const heldOut = !!(state.routedExample && state.routedTask === String(state.routedExample.text).trim());
     btn.disabled = state.busy || !state.route || !n || heldOut;
-    btn.textContent = heldOut
-      ? "Held-out test task: edit the text to teach (keeps the eval clean)"
-      : "Teach Waypoint: these were the tools I needed" + (n ? " (" + n + ")" : "");
+    btn.hidden = heldOut;
+    $("#teach-note").hidden = !heldOut;
+    btn.textContent = n ? "Teach Waypoint: these were the tools I needed (" + n + ")" : "Tick the tools this run needed, then teach Waypoint";
+  }
+
+  const taughtTask = (id) => id != null && state.taught.has(Number(id));
+
+  function lessonOf(t) {
+    const r = state.route || {};
+    const clauseTask = new Map((r.clauses || []).filter(Boolean).map((c) => [String(c.id), c.task]));
+    for (const p of Array.isArray(t.paths) ? t.paths : []) {
+      if (!p) continue;
+      if (p.via === "task" && taughtTask(p.task)) return Number(p.task);
+      if (p.via === "clause" && taughtTask(clauseTask.get(String(p.clause)))) return Number(clauseTask.get(String(p.clause)));
+    }
+    return null;
   }
 
   async function teach() {
@@ -532,23 +600,25 @@
     const task = state.routedTask;
     const used = [...state.checked];
     const st = $("#teach-status");
-    st.className = "status";
-    st.textContent = "Writing (:Task)-[:USED]->(:Api) edges to HydraDB…";
+    st.className = "status lesson busy";
+    st.replaceChildren(el("span", { class: "spin", "aria-hidden": "true" }), "Writing (:Task)-[:USED]->(:Api) edges to HydraDB…");
     setBusy(true);
     try {
       const fb = (await api("/api/feedback", { task, used })) || {};
+      if (fb.task_id != null) state.taught.set(Number(fb.task_id), { text: task, tools: used });
       setLearned(fb.learned_tasks, true);
       const edges = isNum(fb.edges_written) ? fb.edges_written : used.length;
       const head = "Wrote " + edges + " USED edge" + (edges === 1 ? "" : "s") + (fb.task_id != null ? " from Task " + fb.task_id : "") + " to HydraDB.";
-      st.textContent = head + " Re-routing…";
+      st.replaceChildren(el("span", { class: "spin", "aria-hidden": "true" }), head + " Re-routing…");
       const before = state.route;
       if (!(await doRoute(task, before))) {
         st.className = "status err";
         st.textContent = head + " Re-route failed.";
         return;
       }
-      st.className = "status ok";
-      st.textContent = head + " " + diffSummary(before, state.route, used);
+      st.className = "status lesson ok";
+      st.replaceChildren(...lessonCard(head, before, state.route, used));
+      requestAnimationFrame(() => st.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
     } catch (e) {
       st.className = "status err";
       st.textContent = "Feedback failed: " + e.message;
@@ -557,17 +627,30 @@
     }
   }
 
-  function diffSummary(before, after, used) {
-    const b = (before.tools || []).map((t) => t.idx);
-    const a = (after.tools || []).map((t) => t.idx);
-    const entered = a.filter((i) => !b.includes(i)).length;
-    const up = a.filter((i, r) => b.includes(i) && b.indexOf(i) > r).length;
-    const taughtIn = used.filter((i) => a.slice(0, K).includes(i)).length;
-    const parts = [];
-    if (entered) parts.push(entered + " tool" + (entered === 1 ? "" : "s") + " entered the top " + K + " (" + b.filter((i) => !a.includes(i)).map((i) => (before.tools.find((t) => t.idx === i) || {}).name || "API " + i).join(", ") + " dropped)");
-    if (up) parts.push(up + " moved up");
-    parts.push(taughtIn + "/" + used.length + " taught tools load");
-    return "Re-routed: " + parts.join(", ") + ".";
+  function lessonCard(head, before, after, used) {
+    const info = (r, i) => {
+      const list = (r.tools || []);
+      const at = list.findIndex((t) => t.idx === i);
+      return at < 0 ? null : { rank: at + 1, score: list[at].score, name: list[at].name };
+    };
+    const rows = used.map((i) => {
+      const b = info(before, i);
+      const a = info(after, i);
+      const name = (a || b || {}).name || "API " + i;
+      const rank = (x) => (x && x.rank <= K ? "#" + x.rank : "not loaded");
+      const sc = (x) => (x && isNum(x.score) ? x.score.toFixed(1) : "–");
+      const up = a && b && isNum(a.score) && isNum(b.score) && a.score > b.score + 0.05;
+      return el("div", { class: "lr" },
+        el("span", { class: "ln", text: name }),
+        el("span", { class: "lv" }, rank(b), el("i", { text: " → " }), el("b", { text: rank(a) })),
+        el("span", { class: "lv" + (up ? " up" : "") }, "vote ", sc(b), el("i", { text: " → " }), el("b", { text: sc(a) }),
+          up && b.score > 0 ? el("em", { class: "gain", text: " +" + Math.round(((a.score - b.score) / b.score) * 100) + "%" }) : null));
+    });
+    return [
+      el("div", { class: "lh2" }, el("span", { class: "okdot", "aria-hidden": "true", text: "✓" }), head),
+      el("div", { class: "lrows" }, rows),
+      el("div", { class: "lfoot", text: "The lesson is now edges in the graph. Re-word the task, or try a related one: Waypoint reaches these tools through it (marked “your lesson”)." }),
+    ];
   }
 
   /* ---------- frame 3: graph + tokens ---------- */
@@ -594,7 +677,7 @@
         el("span", { text: state.route ? "" : " Pick a held-out task or type one: the subgraph Waypoint walks in HydraDB appears here." })));
       return;
     }
-    const W = Math.max(560, host.clientWidth);
+    const W = Math.max(640, host.clientWidth);
     const H = Math.max(360, host.clientHeight);
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const parts = Array.isArray(r.parts) ? r.parts.filter((p) => typeof p === "string" && p.trim()) : [];
@@ -746,16 +829,18 @@
       if (it.kind === "task") {
         const id = taskId(it);
         const t = taskInfo.get(String(id)) || {};
-        card(it.id, colX.e0, colX.e1, p.y, "ev task" + (isNew ? " new" : ""), [
+        const mine = taughtTask(id);
+        card(it.id, colX.e0, colX.e1, p.y, "ev task" + (isNew ? " new" : "") + (mine ? " taught" : ""), [
           svg("circle", { cx: colX.e0 + 11, cy: p.y, r: 4, class: "t" }),
-          svg("text", { x: colX.e0 + 22, y: p.y + 4, class: "lbl", text: trunc(gist(t.text || it.text || "Task " + id), chars(colX.e1 - colX.e0 - 64)) }),
+          svg("text", { x: colX.e0 + 22, y: p.y + 4, class: "lbl", text: (mine ? "Your lesson · " : "") + trunc(gist(t.text || it.text || "Task " + id), chars(colX.e1 - colX.e0 - 64) - (mine ? 14 : 0)) }),
           isNum(w) ? svg("text", { x: colX.e1 - 8, y: p.y + 4, "text-anchor": "end", class: "wv", text: w.toFixed(2) }) : null,
         ].filter(Boolean), () => nodeTip(it, ctx));
       } else {
         const cl = clauseInfo.get(String(it.id).replace(/^c/, "")) || {};
-        card(it.id, colX.e0, colX.e1, p.y, "ev clause" + (isNew ? " new" : ""), [
+        const mineC = taughtTask(cl.task);
+        card(it.id, colX.e0, colX.e1, p.y, "ev clause" + (isNew ? " new" : "") + (mineC ? " taught" : ""), [
           svg("rect", { x: colX.e0 + 7.5, y: p.y - 3.5, width: 7, height: 7, rx: 1, transform: "rotate(45 " + (colX.e0 + 11) + " " + p.y + ")", class: "c" }),
-          svg("text", { x: colX.e0 + 22, y: p.y + 4, class: "lbl", text: "“" + trunc(gist(cl.text || it.text || "Clause"), chars(colX.e1 - colX.e0 - 70)) + "”" }),
+          svg("text", { x: colX.e0 + 22, y: p.y + 4, class: "lbl", text: (mineC ? "Your lesson · " : "") + "“" + trunc(gist(cl.text || it.text || "Clause"), chars(colX.e1 - colX.e0 - 70) - (mineC ? 14 : 0)) + "”" }),
           isNum(w) ? svg("text", { x: colX.e1 - 8, y: p.y + 4, "text-anchor": "end", class: "wv", text: w.toFixed(2) }) : null,
         ].filter(Boolean), () => nodeTip(it, ctx));
       }
