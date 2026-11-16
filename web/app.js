@@ -15,6 +15,7 @@
     routedTask: "",
     prev: null,
     checked: new Set(),
+    taught: new Map(),
     busy: false,
   };
 
@@ -487,12 +488,13 @@
         updateTeach();
       });
       const via = isWp ? voteLabel(t) : [];
+      const lesson = isWp ? lessonOf(t) : null;
       const sub = [t.tool, t.category].filter(Boolean).join(" · ");
       const li = el("li", { class: ["tool", needed && "needed", change && "chg-" + change[0]].filter(Boolean).join(" "), "data-idx": t.idx },
         cb,
         el("span", { class: "rank", text: String(i + 1) }),
         el("div", { class: "tbody" },
-          el("div", { class: "tname", title: t.name || "", text: t.name || "API " + t.idx }),
+          el("div", { class: "tname", title: t.name || "" }, t.name || "API " + t.idx, lesson != null && el("span", { class: "lesson-chip", title: "Reached through Task " + lesson + ", which you taught", text: "your lesson" })),
           el("div", { class: "tsub", title: sub }, sub, via.length > 0 && (sub ? " · " : ""), via.length > 0 && el("span", { class: "via" }, via))),
         el("div", { class: "tmeta" },
           change && el("span", { class: "chg " + change[0], text: change[1] }),
@@ -522,9 +524,22 @@
     const n = state.checked.size;
     const heldOut = !!(state.routedExample && state.routedTask === String(state.routedExample.text).trim());
     btn.disabled = state.busy || !state.route || !n || heldOut;
-    btn.textContent = heldOut
-      ? "Held-out test task: edit the text to teach (keeps the eval clean)"
-      : "Teach Waypoint: these were the tools I needed" + (n ? " (" + n + ")" : "");
+    btn.hidden = heldOut;
+    $("#teach-note").hidden = !heldOut;
+    btn.textContent = n ? "Teach Waypoint: these were the tools I needed (" + n + ")" : "Tick the tools this run needed, then teach Waypoint";
+  }
+
+  const taughtTask = (id) => id != null && state.taught.has(Number(id));
+
+  function lessonOf(t) {
+    const r = state.route || {};
+    const clauseTask = new Map((r.clauses || []).filter(Boolean).map((c) => [String(c.id), c.task]));
+    for (const p of Array.isArray(t.paths) ? t.paths : []) {
+      if (!p) continue;
+      if (p.via === "task" && taughtTask(p.task)) return Number(p.task);
+      if (p.via === "clause" && taughtTask(clauseTask.get(String(p.clause)))) return Number(clauseTask.get(String(p.clause)));
+    }
+    return null;
   }
 
   async function teach() {
@@ -532,23 +547,25 @@
     const task = state.routedTask;
     const used = [...state.checked];
     const st = $("#teach-status");
-    st.className = "status";
-    st.textContent = "Writing (:Task)-[:USED]->(:Api) edges to HydraDB…";
+    st.className = "status lesson busy";
+    st.replaceChildren(el("span", { class: "spin", "aria-hidden": "true" }), "Writing (:Task)-[:USED]->(:Api) edges to HydraDB…");
     setBusy(true);
     try {
       const fb = (await api("/api/feedback", { task, used })) || {};
+      if (fb.task_id != null) state.taught.set(Number(fb.task_id), { text: task, tools: used });
       setLearned(fb.learned_tasks, true);
       const edges = isNum(fb.edges_written) ? fb.edges_written : used.length;
       const head = "Wrote " + edges + " USED edge" + (edges === 1 ? "" : "s") + (fb.task_id != null ? " from Task " + fb.task_id : "") + " to HydraDB.";
-      st.textContent = head + " Re-routing…";
+      st.replaceChildren(el("span", { class: "spin", "aria-hidden": "true" }), head + " Re-routing…");
       const before = state.route;
       if (!(await doRoute(task, before))) {
         st.className = "status err";
         st.textContent = head + " Re-route failed.";
         return;
       }
-      st.className = "status ok";
-      st.textContent = head + " " + diffSummary(before, state.route, used);
+      st.className = "status lesson ok";
+      st.replaceChildren(...lessonCard(head, before, state.route, used));
+      requestAnimationFrame(() => st.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
     } catch (e) {
       st.className = "status err";
       st.textContent = "Feedback failed: " + e.message;
@@ -557,17 +574,29 @@
     }
   }
 
-  function diffSummary(before, after, used) {
-    const b = (before.tools || []).map((t) => t.idx);
-    const a = (after.tools || []).map((t) => t.idx);
-    const entered = a.filter((i) => !b.includes(i)).length;
-    const up = a.filter((i, r) => b.includes(i) && b.indexOf(i) > r).length;
-    const taughtIn = used.filter((i) => a.slice(0, K).includes(i)).length;
-    const parts = [];
-    if (entered) parts.push(entered + " tool" + (entered === 1 ? "" : "s") + " entered the top " + K + " (" + b.filter((i) => !a.includes(i)).map((i) => (before.tools.find((t) => t.idx === i) || {}).name || "API " + i).join(", ") + " dropped)");
-    if (up) parts.push(up + " moved up");
-    parts.push(taughtIn + "/" + used.length + " taught tools load");
-    return "Re-routed: " + parts.join(", ") + ".";
+  function lessonCard(head, before, after, used) {
+    const info = (r, i) => {
+      const list = (r.tools || []);
+      const at = list.findIndex((t) => t.idx === i);
+      return at < 0 ? null : { rank: at + 1, score: list[at].score, name: list[at].name };
+    };
+    const rows = used.map((i) => {
+      const b = info(before, i);
+      const a = info(after, i);
+      const name = (a || b || {}).name || "API " + i;
+      const rank = (x) => (x && x.rank <= K ? "#" + x.rank : "not loaded");
+      const sc = (x) => (x && isNum(x.score) ? x.score.toFixed(1) : "–");
+      const up = a && b && isNum(a.score) && isNum(b.score) && a.score > b.score + 0.05;
+      return el("div", { class: "lr" },
+        el("span", { class: "ln", text: name }),
+        el("span", { class: "lv" }, rank(b), el("i", { text: " → " }), el("b", { text: rank(a) })),
+        el("span", { class: "lv" + (up ? " up" : "") }, "vote ", sc(b), el("i", { text: " → " }), el("b", { text: sc(a) })));
+    });
+    return [
+      el("div", { class: "lh2" }, el("span", { class: "okdot", "aria-hidden": "true", text: "✓" }), head),
+      el("div", { class: "lrows" }, rows),
+      el("div", { class: "lfoot", text: "The lesson is now edges in the graph. Re-word the task, or try a related one: Waypoint reaches these tools through it (marked “your lesson”)." }),
+    ];
   }
 
   /* ---------- frame 3: graph + tokens ---------- */
@@ -746,16 +775,18 @@
       if (it.kind === "task") {
         const id = taskId(it);
         const t = taskInfo.get(String(id)) || {};
-        card(it.id, colX.e0, colX.e1, p.y, "ev task" + (isNew ? " new" : ""), [
+        const mine = taughtTask(id);
+        card(it.id, colX.e0, colX.e1, p.y, "ev task" + (isNew ? " new" : "") + (mine ? " taught" : ""), [
           svg("circle", { cx: colX.e0 + 11, cy: p.y, r: 4, class: "t" }),
-          svg("text", { x: colX.e0 + 22, y: p.y + 4, class: "lbl", text: trunc(gist(t.text || it.text || "Task " + id), chars(colX.e1 - colX.e0 - 64)) }),
+          svg("text", { x: colX.e0 + 22, y: p.y + 4, class: "lbl", text: (mine ? "Your lesson · " : "") + trunc(gist(t.text || it.text || "Task " + id), chars(colX.e1 - colX.e0 - 64) - (mine ? 14 : 0)) }),
           isNum(w) ? svg("text", { x: colX.e1 - 8, y: p.y + 4, "text-anchor": "end", class: "wv", text: w.toFixed(2) }) : null,
         ].filter(Boolean), () => nodeTip(it, ctx));
       } else {
         const cl = clauseInfo.get(String(it.id).replace(/^c/, "")) || {};
-        card(it.id, colX.e0, colX.e1, p.y, "ev clause" + (isNew ? " new" : ""), [
+        const mineC = taughtTask(cl.task);
+        card(it.id, colX.e0, colX.e1, p.y, "ev clause" + (isNew ? " new" : "") + (mineC ? " taught" : ""), [
           svg("rect", { x: colX.e0 + 7.5, y: p.y - 3.5, width: 7, height: 7, rx: 1, transform: "rotate(45 " + (colX.e0 + 11) + " " + p.y + ")", class: "c" }),
-          svg("text", { x: colX.e0 + 22, y: p.y + 4, class: "lbl", text: "“" + trunc(gist(cl.text || it.text || "Clause"), chars(colX.e1 - colX.e0 - 70)) + "”" }),
+          svg("text", { x: colX.e0 + 22, y: p.y + 4, class: "lbl", text: (mineC ? "Your lesson · " : "") + "“" + trunc(gist(cl.text || it.text || "Clause"), chars(colX.e1 - colX.e0 - 70) - (mineC ? 14 : 0)) + "”" }),
           isNum(w) ? svg("text", { x: colX.e1 - 8, y: p.y + 4, "text-anchor": "end", class: "wv", text: w.toFixed(2) }) : null,
         ].filter(Boolean), () => nodeTip(it, ctx));
       }
