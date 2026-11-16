@@ -60,6 +60,7 @@ engine2=$!
 # Temporary: a snapshot of the engine's state at /__diag on the warm-up listener, because Render's
 # log stream stops forwarding this container's output after the first second.
 (
+  set +e
   while true; do
     {
       date -u +%T
@@ -83,9 +84,12 @@ engine2=$!
       tail -n 6 /tmp/engine2.log 2>&1 | cut -c1-200
       echo "--- last healthcheck runs (rc, seconds)"
       tail -n 5 /tmp/hc.log 2>&1
-      qs=$SECONDS
-      qout=$(timeout 25 bash -c 'exec 3<>/dev/tcp/127.0.0.1/8443; b="{\"cell_id\":\"cell-0\",\"query_id\":\"diag-$RANDOM$RANDOM\",\"query\":\"RETURN 1 AS x\"}"; printf "POST /v1/graphs/default/query HTTP/1.0\r\nHost: 127.0.0.1\r\nAuthorization: Bearer %s\r\nContent-Type: application/json\r\nContent-Length: %s\r\nConnection: close\r\n\r\n%s" "$HYDRADB_TOKEN" "${#b}" "$b" >&3; head -c 300 <&3' 2>&1 | tr -d '\r' | head -c 400)
-      echo "raw query: $((SECONDS - qs))s: $qout"
+      echo "--- cpu: $(grep -m1 'model name' /proc/cpuinfo | cut -c1-80) | $(grep -m1 '^flags' /proc/cpuinfo | tr ' ' '\n' | grep -E '^(avx|avx2|avx512[a-z]*|bmi2|sse4_2|aes|sha_ni)$' | tr '\n' ' ')"
+      echo "--- raw query probe (/tmp/q.out)"
+      head -c 500 /tmp/q.out 2>&1
+      echo
+      echo "--- strace of engine while the query was in flight"
+      tail -n 40 /tmp/st.txt 2>&1 | cut -c1-170
       echo "--- engine log tail"
       tail -n 25 /tmp/engine.log 2>&1 | cut -c1-220
     } > /tmp/diag.tmp 2>&1
@@ -94,6 +98,20 @@ engine2=$!
   done
 ) &
 diag_worker=$!
+(
+  set +e
+  sleep 45
+  pid=$(pgrep -x graph-node | head -n1)
+  (timeout 25 bash -c 'exec 3<>/dev/tcp/127.0.0.1/8443; b="{\"cell_id\":\"cell-0\",\"query_id\":\"diag-$RANDOM$RANDOM\",\"query\":\"RETURN 1 AS x\"}"; printf "POST /v1/graphs/default/query HTTP/1.0\r\nHost: 127.0.0.1\r\nAuthorization: Bearer %s\r\nContent-Type: application/json\r\nContent-Length: %s\r\nConnection: close\r\n\r\n%s" "$HYDRADB_TOKEN" "${#b}" "$b" >&3; head -c 300 <&3' > /tmp/q.out 2>&1 &)
+  sleep 1
+  if command -v strace >/dev/null; then
+    timeout 15 strace -f -tt -p "$pid" -o /tmp/st.txt >/dev/null 2>&1
+    [ -s /tmp/st.txt ] || echo "strace attached nothing" > /tmp/st.txt
+  else
+    echo "strace not installed" > /tmp/st.txt
+  fi
+) &
+probe_worker=$!
 
 # Engine state for the platform log while it opens its store (Render shows nothing else after the
 # first lines, so a hang there is otherwise invisible).
@@ -121,7 +139,7 @@ while [ "$SECONDS" -lt 1200 ]; do
   fi
   hs=$SECONDS
   rc=0
-  timeout 20 "${drop[@]}" /usr/local/bin/hydradb-healthcheck >/dev/null 2>&1 || rc=$?
+  timeout -k 2 20 "${drop[@]}" /usr/local/bin/hydradb-healthcheck >/dev/null 2>&1 || rc=$?
   echo "t=$SECONDS rc=$rc took=$((SECONDS - hs))s" >> /tmp/hc.log
   if [ "$rc" = 0 ]; then
     ready=1
@@ -132,7 +150,7 @@ while [ "$SECONDS" -lt 1200 ]; do
 done
 [ "$ready" = 1 ] || { echo "hydradb did not become healthy in 1200s" >&2; diag; exit 1; }
 echo "hydradb healthy"
-kill "$warm" "$diag_worker" "$engine2" 2>/dev/null || true
+kill "$warm" "$diag_worker" "$probe_worker" "$engine2" 2>/dev/null || true
 wait "$warm" 2>/dev/null || true
 
 cd /app

@@ -9,7 +9,7 @@ ARG HYDRADB_BASE=ghcr.io/krishhgg/hydrahack-hydradb@sha256:081ac63cfda4d8e1d8e52
 FROM ${HYDRADB_BASE} AS base
 USER root
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 ca-certificates \
+    && apt-get install -y --no-install-recommends python3 ca-certificates strace \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=ghcr.io/astral-sh/uv:0.13 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 \
