@@ -34,7 +34,7 @@ print(json.dumps({
     "type": "web_service", "name": os.environ["NAME"], "ownerId": os.environ["OWNER"],
     "image": {"ownerId": os.environ["OWNER"], "imagePath": os.environ["IMAGE"]},
     "autoDeploy": "no",
-    "serviceDetails": {"plan": "free", "region": "oregon", "healthCheckPath": "/health", "envVars": env},
+    "serviceDetails": {"runtime": "image", "plan": "free", "region": "oregon", "healthCheckPath": "/health", "envVars": env},
 }))')"
     printf '%s' "$body" | call -X POST "$API/services" -d @- | python3 -c 'import json,sys; d=json.load(sys.stdin); print("created", d.get("service", d)["id"])'
   else
