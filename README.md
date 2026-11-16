@@ -2,7 +2,7 @@
 
 **A drop-in MCP endpoint that serves 5 tools instead of 1,400, and learns from every run which 5 to serve.** Built for the HydraDB Hackathon, Track 2 (the agent context layer), on the open-source [HydraDB](https://github.com/hydra-db/hydradb) engine, self-hosted, as the graph database.
 
-**Live app:** {{LIVE_URL}} (free tier: see [the caveats below](#live-app-and-load))
+**Live app:** https://8000-cs6js0x7u8nbs6h8biw2kqrl2vyzobbf.capysandbox.net (see [live app and load](#live-app-and-load))
 **Loom walkthrough:** {{LOOM_URL}}
 
 ![Waypoint UI: a held-out task routed, Waypoint's top 5 against BM25's top 5, and the subgraph the route traversed](docs/img/waypoint-ui.png)
@@ -36,8 +36,9 @@ Metric: **Completeness@5**, the share of held-out tasks where every needed tool 
 
 ## Live app and load
 
-- The live app runs on Render's free tier (0.1 CPU, 512 MB), so it is **much slower under concurrent use** than the load test below: about 2 route requests per second, and several seconds per query with a few users. It stays correct (no failed requests in testing). Cold start takes about 3 minutes and a keep-alive ping runs every 5 minutes. Teach and feedback writes are lost when the instance restarts.
-- **Load test** ([docs/load.md](docs/load.md)), same image at 2 CPU: 56.6 route requests per second at 20 users, p50 150 ms, p95 280 ms, zero failures. At 0.1 CPU (the free tier): 1.8 requests per second at 5 users, p50 2.3 s, zero failures.
+- The live demo runs on a single 4-CPU instance. Teach and feedback writes are not persisted, so they are lost when the instance restarts and the demo returns to its baked state.
+- The documented self-host path is Render's free tier ([docs/deploy.md](docs/deploy.md), `infra/render/`): 0.1 CPU and 512 MB, a cold start of about 3 minutes kept warm by a ping every 5 minutes, and **much slower under concurrent use** (about 2 route requests per second, several seconds per query with a few users, no failed requests in testing).
+- **Load test** ([docs/load.md](docs/load.md)), same image at 2 CPU: 56.6 route requests per second at 20 users, p50 150 ms, p95 280 ms, zero failures. At 0.1 CPU (Render's free tier): 1.8 requests per second at 5 users, p50 2.3 s, zero failures.
 - Routing latency in the eval, 8 concurrent clients against one HydraDB node: p50 68.9 ms, p95 103.2 ms.
 
 ## Run it
