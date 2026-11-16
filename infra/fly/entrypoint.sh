@@ -17,7 +17,13 @@ db=$!
 
 ready=0
 for _ in $(seq 1 120); do
-  kill -0 "$db" 2>/dev/null || { echo "hydradb exited during startup" >&2; exit 1; }
+  if ! kill -0 "$db" 2>/dev/null; then
+    code=0
+    wait "$db" || code=$?
+    echo "hydradb exited during startup (status $code; 137 = killed, 132 = illegal instruction, 139 = segfault)" >&2
+    echo "diagnostics: $(uname -sr) | cpu flags: $(grep -m1 -o 'avx[0-9a-z_]*' /proc/cpuinfo | sort -u | tr '\n' ' ') | mem: $(cat /sys/fs/cgroup/memory.max 2>/dev/null) | /data: $(df -h /data | tail -1)" >&2
+    exit 1
+  fi
   if "${drop[@]}" /usr/local/bin/hydradb-healthcheck >/dev/null 2>&1; then
     ready=1
     break
