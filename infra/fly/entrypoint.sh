@@ -12,6 +12,26 @@ export HYDRADB_TOKEN="${HYDRADB_TOKEN:-$(head -c 24 /dev/urandom | od -An -tx1 |
 export HYDRADB_URL=http://127.0.0.1:8443
 export HYDRADB_ADMIN_URL=http://127.0.0.1:9090
 
+# Answer on the public port right away: Render's free tier gives HydraDB 0.1 CPU, so it needs several
+# minutes to open the store, and Render fails the deploy when nothing listens on $PORT in that time.
+# Until the app takes over, every request gets a 503 that says the instance is warming up.
+"${drop[@]}" python -c '
+import http.server, json, os
+body = json.dumps({"ok": False, "ready": False, "status": "warming"}).encode()
+class H(http.server.BaseHTTPRequestHandler):
+    def _r(self):
+        self.send_response(503)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Retry-After", "30")
+        self.end_headers()
+        self.wfile.write(body)
+    do_GET = do_POST = do_HEAD = _r
+    def log_message(self, *a): pass
+http.server.ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("PORT", "8080"))), H).serve_forever()
+' &
+warm=$!
+
 "${drop[@]}" /usr/local/bin/hydradb-entrypoint &
 db=$!
 
@@ -32,6 +52,8 @@ for _ in $(seq 1 120); do
 done
 [ "$ready" = 1 ] || { echo "hydradb did not become healthy in 120s" >&2; exit 1; }
 echo "hydradb healthy"
+kill "$warm" 2>/dev/null || true
+wait "$warm" 2>/dev/null || true
 
 cd /app
 if [ "$APP_MODULE" = "hydrahack.api:app" ] && ! python -c 'import importlib.util as u; raise SystemExit(u.find_spec("hydrahack.api") is None)'; then
