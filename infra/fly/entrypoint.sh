@@ -36,22 +36,38 @@ warm=$!
 "${drop[@]}" /usr/local/bin/hydradb-entrypoint &
 db=$!
 
+# Engine state for the platform log while it opens its store (Render shows nothing else after the
+# first lines, so a hang there is otherwise invisible).
+diag() {
+  local pid
+  pid=$(pgrep -x graph-node | head -n1 || true)
+  echo "diag t=${SECONDS}s engine_pid=${pid:-none} $(grep -E 'State|VmRSS|Threads' "/proc/${pid:-0}/status" 2>/dev/null | tr -s ' 	
+' ' ')" >&2
+  echo "diag mem.current=$(cat /sys/fs/cgroup/memory.current 2>/dev/null) max=$(cat /sys/fs/cgroup/memory.max 2>/dev/null) events=$(tr '
+' ' ' </sys/fs/cgroup/memory.events 2>/dev/null) load=$(cut -d' ' -f1-3 /proc/loadavg) free=$(free -m | awk '/Mem:/{print $3"/"$2"MB"}')" >&2
+  echo "diag store: $(du -sk /data/store 2>/dev/null | cut -f1)KB listening: $(ss -ltn 2>/dev/null | awk 'NR>1{print $4}' | tr '
+' ' ')" >&2
+}
+
 ready=0
-for _ in $(seq 1 120); do
+last=-30
+while [ "$SECONDS" -lt 1200 ]; do
   if ! kill -0 "$db" 2>/dev/null; then
     code=0
     wait "$db" || code=$?
     echo "hydradb exited during startup (status $code; 137 = killed, 132 = illegal instruction, 139 = segfault)" >&2
-    echo "diagnostics: $(uname -sr) | cpu flags: $(grep -m1 -o 'avx[0-9a-z_]*' /proc/cpuinfo | sort -u | tr '\n' ' ') | mem: $(cat /sys/fs/cgroup/memory.max 2>/dev/null) | /data: $(df -h /data | tail -1)" >&2
+    echo "diagnostics: $(uname -sr) | cpu flags: $(grep -m1 -o 'avx[0-9a-z_]*' /proc/cpuinfo | sort -u | tr '
+' ' ') | mem: $(cat /sys/fs/cgroup/memory.max 2>/dev/null) | /data: $(df -h /data | tail -1)" >&2
     exit 1
   fi
-  if "${drop[@]}" /usr/local/bin/hydradb-healthcheck >/dev/null 2>&1; then
+  if timeout 20 "${drop[@]}" /usr/local/bin/hydradb-healthcheck >/dev/null 2>&1; then
     ready=1
     break
   fi
+  if [ $((SECONDS - last)) -ge 30 ]; then diag; last=$SECONDS; fi
   sleep 1
 done
-[ "$ready" = 1 ] || { echo "hydradb did not become healthy in 120s" >&2; exit 1; }
+[ "$ready" = 1 ] || { echo "hydradb did not become healthy in 1200s" >&2; diag; exit 1; }
 echo "hydradb healthy"
 kill "$warm" 2>/dev/null || true
 wait "$warm" 2>/dev/null || true
