@@ -366,7 +366,11 @@
   async function doRoute(task, prev) {
     const st = $("#route-status");
     st.className = "status";
-    st.textContent = prev ? "Re-routing with the new edges…" : "Routing…";
+    st.replaceChildren(el("span", { class: "spin", "aria-hidden": "true" }), prev ? "Re-routing with the new edges…" : "Walking the graph in HydraDB…");
+    const work = $("#work");
+    work.classList.add("busy");
+    work.classList.remove("failed");
+    if (!state.route) renderSkeleton();
     try {
       const res = await api("/api/route", { task, k: K });
       state.prev = prev;
@@ -377,18 +381,58 @@
         state.checked = new Set();
         const gold = goldSet();
         if (gold) for (const t of [...(state.route.tools || []), ...(state.route.baseline || [])]) if (gold.has(t.idx)) state.checked.add(t.idx);
-        $("#teach-status").textContent = "";
+        $("#teach-status").replaceChildren();
         $("#teach-status").className = "status";
       }
       setLearned(state.route.learned_tasks);
-      st.textContent = "";
+      st.replaceChildren();
       renderRoute();
       return true;
     } catch (e) {
+      if (!prev) {
+        state.route = null;
+        state.prev = null;
+        state.checked = new Set();
+        renderFailure(task, e);
+      }
       st.className = "status err";
-      st.textContent = "Route failed: " + e.message;
+      st.textContent = "Route failed";
       return false;
+    } finally {
+      work.classList.remove("busy");
     }
+  }
+
+  function friendly(e) {
+    const m = String((e && e.message) || e || "");
+    if (/503/.test(m) && /warm/i.test(m)) return "HydraDB is still loading the experience graph (about a minute after a restart). Try again in a moment.";
+    if (/503/.test(m)) return "HydraDB refused the request. It may be restarting; try again in a moment.";
+    if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return "The Waypoint API can't be reached. Check the connection and try again.";
+    return "Something went wrong while routing this task.";
+  }
+
+  function renderSkeleton() {
+    const rows = (n) => Array.from({ length: n }, () => el("li", { class: "tool skel", "aria-hidden": "true" }, el("span"), el("span"), el("span", { class: "sk-l" }), el("span", { class: "sk-s" })));
+    $("#wp-list").replaceChildren(...rows(K));
+    $("#bm-list").replaceChildren(...rows(K));
+  }
+
+  function renderFailure(task, e) {
+    $("#work").classList.add("failed");
+    $("#latency").textContent = "";
+    $("#parts").hidden = true;
+    $("#wp-score").replaceChildren();
+    $("#bm-score").replaceChildren();
+    $("#bm-list").replaceChildren();
+    $("#tokens").replaceChildren();
+    const retry = el("button", { type: "button", class: "btn", onclick: () => route(task) }, "Try again");
+    $("#wp-list").replaceChildren(el("li", { class: "fail", role: "alert" },
+      el("b", { text: "Couldn't route this task" }),
+      el("span", { text: friendly(e) }),
+      el("code", { text: String((e && e.message) || e) }),
+      retry));
+    $("#graph").replaceChildren(el("div", { class: "empty" }, el("b", { text: "No traversal to show" }), el("span", { text: "The route failed, so no subgraph was walked. Nothing stale is shown." })));
+    updateTeach();
   }
 
   function renderRoute() {
@@ -509,6 +553,15 @@
 
     const score = $(scoreSel);
     if (gold && gold.size && tools.length) {
+      const got = new Set(tools.slice(0, K).map((t) => t.idx));
+      const missed = [...gold].filter((i) => !got.has(i));
+      if (missed.length) {
+        const r = state.route || {};
+        const named = new Map([...(r.tools || []), ...(r.baseline || [])].filter(Boolean).map((t) => [t.idx, t.name]));
+        for (const n of ((r.graph || {}).nodes || [])) if (n && n.kind === "api" && !named.has(apiIdx(n))) named.set(apiIdx(n), n.label);
+        host.append(el("li", { class: "missed" }, el("span", { class: "x", "aria-hidden": "true", text: "✕" }),
+          el("span", {}, "Missed " + missed.length + " needed tool" + (missed.length === 1 ? "" : "s") + ": ", el("b", { text: missed.map((i) => named.get(i) || "API " + i).join(", ") }))));
+      }
       const hit = tools.slice(0, K).filter((t) => gold.has(t.idx)).length;
       const complete = hit === gold.size;
       score.replaceChildren(
@@ -590,7 +643,8 @@
       return el("div", { class: "lr" },
         el("span", { class: "ln", text: name }),
         el("span", { class: "lv" }, rank(b), el("i", { text: " → " }), el("b", { text: rank(a) })),
-        el("span", { class: "lv" + (up ? " up" : "") }, "vote ", sc(b), el("i", { text: " → " }), el("b", { text: sc(a) })));
+        el("span", { class: "lv" + (up ? " up" : "") }, "vote ", sc(b), el("i", { text: " → " }), el("b", { text: sc(a) }),
+          up && b.score > 0 ? el("em", { class: "gain", text: " +" + Math.round(((a.score - b.score) / b.score) * 100) + "%" }) : null));
     });
     return [
       el("div", { class: "lh2" }, el("span", { class: "okdot", "aria-hidden": "true", text: "✓" }), head),
@@ -623,7 +677,7 @@
         el("span", { text: state.route ? "" : " Pick a held-out task or type one: the subgraph Waypoint walks in HydraDB appears here." })));
       return;
     }
-    const W = Math.max(560, host.clientWidth);
+    const W = Math.max(640, host.clientWidth);
     const H = Math.max(360, host.clientHeight);
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const parts = Array.isArray(r.parts) ? r.parts.filter((p) => typeof p === "string" && p.trim()) : [];
