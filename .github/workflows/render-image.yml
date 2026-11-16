@@ -1,0 +1,48 @@
+name: Render image
+
+# Builds the combined HydraDB + app image with the learned graph baked in (infra/render/Dockerfile)
+# and publishes it to GHCR, where Render pulls it. The seed stage ingests only the ToolBench
+# catalog and training runs. Redeploy the Render service after this finishes (infra/render/deploy.sh).
+on:
+  push:
+    branches: [main]
+    paths:
+      - hydrahack/**
+      - web/**
+      - infra/**
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/render-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: render-image
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/render/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/hydrahack-render:latest
+            ghcr.io/${{ github.repository_owner }}/hydrahack-render:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
