@@ -27,4 +27,4 @@ Numbers come from `docs/results.md` and the committed `eval/` result files, neve
 - Technical: metric Completeness@5, baseline stateless BM25 (26.7%), result 70.3%; baselines get the same runs and candidate budget; the graph's own margin over the strongest plain store is reported at its real size; learned state and traversal live in self-hosted HydraDB.
 - Go-to-market: platform teams with large MCP catalogs pay to cut schema tokens and wrong-tool failures; see `docs/gtm.md`.
 
-Live app: {{LIVE_URL}}. Repo: github.com/krishhgg/hydrahack.
+Live app: https://8000-cs6js0x7u8nbs6h8biw2kqrl2vyzobbf.capysandbox.net. Repo: github.com/krishhgg/hydrahack.
