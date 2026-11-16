@@ -90,7 +90,8 @@ Completeness@5 on 2,373 held-out tasks after 19,361 runs: BM25 0.267, flat memor
   - Completeness@5 is 70.7%, against 70.3% before.
   - Novel tool sets: 42.9%, against 41.5%.
   - Early curve: 32.0%, against 27.7% at 250 runs, because early on most endpoints have no runs.
-- Cost: route latency in the 8-client eval went from p50 68.9 ms to 92.5 ms. A single client is at about 63 ms p50 over HTTP, with 40 ms of that in the graph (four traversals).
+- Codex P1 on #30: the first version took its text match from the whole catalog, so it could reach endpoints outside the 30 text candidates that flat k-NN gets. That made the candidate budget unequal. The transfer now only considers endpoints among the `lex_top` text candidates. Validation moved from 0.195 to 0.193 on new-Api tasks, and test is unchanged at 24.2%. The main eval is 70.7%, the novel slice 42.9% and the seen slice 78.2%.
+- Cost: p50 route latency in the 8-client eval was 71.7 ms on the final run, against 68.9 ms before the transfer. The earlier, uncapped version was at 92 to 151 ms. A single client was at about 63 ms p50 over HTTP, with 40 ms of that in the graph (four traversals).
 - `/api/route` has a new `vote.tool` key, and paths gain `via: "tool"` entries with the source Api.
 
 ## 2026-11-16 06:10 Live agent check (#24)

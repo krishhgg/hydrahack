@@ -28,9 +28,9 @@
   },
   "completeness": {
     "waypoint": {
-      "new_api": 0.1954,
+      "new_api": 0.1933,
       "familiar": 0.7538,
-      "all": 0.6195
+      "all": 0.619
     },
     "waypoint_no_transfer": {
       "new_api": 0.0249,
@@ -54,11 +54,11 @@
     }
   },
   "new_api_recall": {
-    "waypoint": 0.2952,
+    "waypoint": 0.2935,
     "waypoint_no_transfer": 0.0495,
     "bm25": 0.5137,
     "flat_memory": 0.4164,
     "flat_knn": 0.0188
   },
-  "generated_at": "2026-11-16T05:54:41+00:00"
+  "generated_at": "2026-11-16T06:16:51+00:00"
 }

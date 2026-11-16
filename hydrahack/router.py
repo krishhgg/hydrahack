@@ -156,7 +156,9 @@ class Router:
 
     def _transfer_to_cold(self, text: str, score: Counter, paths: dict) -> None:
         """Hand a share of a tool's learned vote to endpoints of the same Tool that no run has used
-        yet, when the task's text matches the new endpoint at least as well as the voted one.
+        yet, when the task's text matches the new endpoint at least as well as the voted one. Only
+        endpoints already among the lex_top text candidates qualify, so the transfer re-ranks the
+        same candidates the flat baselines see instead of adding new ones.
         A store of past runs has nothing to copy for such an endpoint; the graph reaches it
         through (:Api)<-[:HAS_API]-(:Tool)-[:HAS_API]->(:Api)."""
         p = self.p
@@ -168,7 +170,7 @@ class Router:
         siblings = self.store.cold_siblings(list(learned))
         if not siblings:
             return
-        lex = self.api_index.search(text, len(self.apis))
+        lex = self.api_index.search(text, p.lex_top)
         ceiling = lex[0][1] if lex else 1.0
         rel = {a: s / ceiling for a, s in lex}
         for a, cold in siblings.items():
