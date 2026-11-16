@@ -179,7 +179,7 @@ def route(body: RouteIn) -> dict:
 
     tools = []
     for a in r.tools:
-        vote = {"text": 0.0, "task": 0.0, "clause": 0.0}
+        vote = {"text": 0.0, "task": 0.0, "clause": 0.0, "tool": 0.0}
         for p in r.paths[a]:
             vote[p["via"]] += p["c"]
         tools.append(

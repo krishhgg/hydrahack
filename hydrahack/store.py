@@ -60,8 +60,8 @@ def clause_node(clause_id: int) -> int:
 
 class MemoryStore:
     def __init__(self) -> None:
-        self.tool_of: dict[int, str] = {}
-        self.by_tool: dict[str, set[int]] = defaultdict(set)
+        self.tool_of: dict[int, tuple[str, str]] = {}
+        self.by_tool: dict[tuple[str, str], set[int]] = defaultdict(set)
         self.task_used: dict[int, set[int]] = {}
         self.api_tasks: dict[int, set[int]] = defaultdict(set)
         self.rejected: Counter[int] = Counter()
@@ -70,8 +70,8 @@ class MemoryStore:
 
     def load_catalog(self, apis: Sequence[Api]) -> None:
         for a in apis:
-            self.tool_of[a.idx] = a.tool
-            self.by_tool[a.tool].add(a.idx)
+            self.tool_of[a.idx] = (a.category, a.tool)
+            self.by_tool[(a.category, a.tool)].add(a.idx)
 
     def add_runs(self, runs: Sequence[Run]) -> None:
         for r in runs:
@@ -94,6 +94,15 @@ class MemoryStore:
 
     def outcomes(self, api_ids: Iterable[int]) -> dict[int, tuple[int, int]]:
         return {a: (len(self.api_tasks.get(a, ())), self.rejected[a]) for a in api_ids}
+
+    def cold_siblings(self, api_ids: Iterable[int]) -> dict[int, set[int]]:
+        out: dict[int, set[int]] = {}
+        for a in api_ids:
+            tool = self.by_tool[self.tool_of[a]]
+            cold = {s for s in tool if s != a and not self.api_tasks.get(s)}
+            if cold:
+                out[a] = cold
+        return out
 
     def runs(self) -> list[tuple[int, str]]:
         return []
@@ -236,6 +245,23 @@ class GraphStore:
         )
         for r in rows:
             out[r["a"]] = (r["u"] or 0, r["r"] or 0)
+        return out
+
+    def cold_siblings(self, api_ids: Iterable[int]) -> dict[int, set[int]]:
+        """Two hops through the catalog: other endpoints of the same Tool that no run has used
+        yet, such as endpoints added after deployment."""
+        ids = [api_node(a) for a in api_ids]
+        out: dict[int, set[int]] = defaultdict(set)
+        if not ids:
+            return out
+        rows = self.db.query(
+            "MATCH (a:Api)<-[:HAS_API]-(t:Tool)-[:HAS_API]->(s:Api) "
+            "WHERE a.id IN $ids AND s.id <> a.id AND (s.used IS NULL OR s.used = 0) "
+            "RETURN a.idx AS a, s.idx AS s",
+            {"ids": ids},
+        )
+        for r in rows:
+            out[r["a"]].add(r["s"])
         return out
 
     def clause_texts(self) -> list[tuple[int, str]]:

@@ -68,3 +68,38 @@ Completeness@5 on 2,373 held-out tasks after 19,361 runs: BM25 0.267, flat memor
   - Api experience profiles: index each Api by the texts of the Clauses that `NEED` it (`Api <-NEEDS- Clause`) and match each sub-request against them. The best setting (weight 0.5, top 5) scored 0.739 / 0.498 at the end of the stream, but 0.286 / 0.135 at 250 runs and 0.394 / 0.177 at 1,000, so it hurts the early curve, and +0.038 on 215 novel tasks is about 8 tasks. Not shipped.
   - Per-part normalization of clause votes, so each sub-request's best match counts 1: lower at every checkpoint. Dropped.
 - None reached test, so the test numbers are unchanged.
+
+## 2026-11-16 06:10 New Apis with no past runs: Tool transfer
+
+- Question from the Captain: would this fall apart on a plain store? On the full test set the budget-matched flat k-NN is within a point of Waypoint, so we measured the case where a store of past runs has nothing to copy: Apis added to the catalog after go-live. `eval/cold_start.py` holds a seeded 10% of the Apis (142) out of every training run (14,819 of 19,361 runs remain). They stay in the catalog with their Tool and Category edges.
+- Finding: both learned routers collapse on tasks that need a held-out Api (Waypoint 3.0%, flat k-NN 1.8% on test), below stateless BM25 (22.8%). Their experience votes bury the unused endpoint.
+- Fix: `Router._transfer_to_cold`. For the top 10 learned candidates, `GraphStore.cold_siblings` follows `(:Api)<-[:HAS_API]-(:Tool)-[:HAS_API]->(:Api)` to endpoints whose `used` counter is 0. Such an endpoint gets `w_new * learned vote * text match` when its text match is at least `new_tau` and at least the voted endpoint's. The learning loop writes the `used` counter, so the transfer stops on its own once a run uses the endpoint.
+- Tuning, on validation only (`--split val --memory`, same held-out Apis, 481 new-Api tasks, 1,519 familiar):
+  - w_new 0.5, tau 0.5: new 0.193, familiar 0.752, all 0.618.
+  - w_new 1.0, tau 0.5: 0.216 / 0.746 / 0.619.
+  - w_new 2.0, tau 0.5: 0.223 / 0.735 / 0.612.
+  - w_new 1.0, tau 0.3: 0.223 / 0.746 / 0.620.
+  - w_new 0.5, tau 0.3: 0.198 / 0.753 / 0.619. Picked because familiar tasks are unchanged (0.7525 without the transfer).
+  - Adding a cap of the top 10 learned candidates kept validation at 0.195 / 0.754 / 0.620. The cap is there for latency: the sibling query costs about 10 ms for 5 Apis, 20 ms for 15 and 300 ms for 100.
+  - Earlier ungated variants (every unused sibling, no text gate) reached 0.24 on new-Api tasks but cost 3 to 13 points on familiar ones.
+- Test, against HydraDB (`eval/results/cold-start-test.json`):
+  - New-Api tasks: 24.2%, against 3.0% without the transfer, 1.8% for flat k-NN and 22.8% for BM25.
+  - Familiar tasks: 72.2%, against 72.5% without it (-0.3).
+  - All tasks: 60.9%, against 55.1% for flat k-NN.
+- Main eval with the transfer on (`eval/results/waypoint-test.json`):
+  - Completeness@5 is 70.7%, against 70.3% before.
+  - Novel tool sets: 42.9%, against 41.5%.
+  - Early curve: 32.0%, against 27.7% at 250 runs, because early on most endpoints have no runs.
+- Codex P1 on #30: the first version took its text match from the whole catalog, so it could reach endpoints outside the 30 text candidates that flat k-NN gets. That made the candidate budget unequal. The transfer now only considers endpoints among the `lex_top` text candidates. Validation moved from 0.195 to 0.193 on new-Api tasks, and test is unchanged at 24.2%. The main eval is 70.7%, the novel slice 42.9% and the seen slice 78.2%.
+- Cost: p50 route latency in the 8-client eval was 71.7 ms on the final run, against 68.9 ms before the transfer. The earlier, uncapped version was at 92 to 151 ms. A single client was at about 63 ms p50 over HTTP, with 40 ms of that in the graph (four traversals).
+- `/api/route` has a new `vote.tool` key, and paths gain `via: "tool"` entries with the source Api.
+
+## 2026-11-16 06:10 Live agent check (#24)
+
+- gpt-5.4-mini, 40 test tasks, mocked `call_api`, $1.02 (`eval/results/agent-check.json`). Success:
+  - Preloaded catalog: 35%.
+  - Stateless search: 17.5%.
+  - Flat k-NN finder: 52.5%.
+  - Waypoint /mcp: 50%.
+- Mean input tokens: 183,962 for the preloaded catalog, 2,905 for Waypoint.
+- Codex asked for the budget-matched control, and it ties Waypoint. The run shows that learning from runs pays off, not that the graph does. 36 of the 40 tasks have tool sets seen in training. It ran before the Tool transfer shipped.

@@ -1,0 +1,64 @@
+{
+  "dataset": "ToolBench G3, COLT split (hf.co/datasets/Tool-COLT/ToolBenchG3)",
+  "split": "val",
+  "store": "memory",
+  "held_out_apis": 142,
+  "held_out_frac": 0.1,
+  "seed": 7,
+  "train_stream": 14819,
+  "train_stream_full": 19361,
+  "k": 5,
+  "params": {
+    "lex_top": 30,
+    "task_top": 8,
+    "clause_top": 6,
+    "w_lex": 1.0,
+    "w_exp": 4.0,
+    "w_needs": 1.0,
+    "w_rej": 0.3,
+    "sim_power": 1.0,
+    "w_new": 0.5,
+    "new_tau": 0.3,
+    "new_top": 10
+  },
+  "tasks": {
+    "new_api": 481,
+    "familiar": 1519,
+    "all": 2000
+  },
+  "completeness": {
+    "waypoint": {
+      "new_api": 0.1933,
+      "familiar": 0.7538,
+      "all": 0.619
+    },
+    "waypoint_no_transfer": {
+      "new_api": 0.0249,
+      "familiar": 0.7525,
+      "all": 0.5775
+    },
+    "bm25": {
+      "new_api": 0.2308,
+      "familiar": 0.2956,
+      "all": 0.28
+    },
+    "flat_memory": {
+      "new_api": 0.2245,
+      "familiar": 0.659,
+      "all": 0.5545
+    },
+    "flat_knn": {
+      "new_api": 0.0146,
+      "familiar": 0.7327,
+      "all": 0.56
+    }
+  },
+  "new_api_recall": {
+    "waypoint": 0.2935,
+    "waypoint_no_transfer": 0.0495,
+    "bm25": 0.5137,
+    "flat_memory": 0.4164,
+    "flat_knn": 0.0188
+  },
+  "generated_at": "2026-11-16T06:16:51+00:00"
+}

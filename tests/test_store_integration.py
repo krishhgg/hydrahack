@@ -13,6 +13,7 @@ APIS = [
     Api(1, "Food", "Cocktail DB", "Detailed Cocktail Recipe", "recipe by cocktail id", ""),
     Api(2, "News", "Newsroom", "Search News", "news articles about a topic", ""),
     Api(3, "Weather", "Forecast", "Daily Forecast", "weather forecast for a city", ""),
+    Api(4, "Food", "Cocktail DB", "Cocktail Image", "photo of a cocktail by id", ""),
 ]
 RUNS = [
     Run(1, "party drinks and headlines", {0, 1, 2}, {3}),
@@ -48,6 +49,14 @@ def test_graph_matches_reference(stores):
     assert graph.outcomes([0, 1, 2, 3]) == mem.outcomes([0, 1, 2, 3])
     assert sorted(graph.runs()) == sorted((r.task_id, r.text) for r in RUNS)
     assert graph.clause_needs([10, 11, 30]) == mem.clause_needs([10, 11, 30])
+    assert (
+        dict(graph.cold_siblings([0, 1, 2, 3]))
+        == mem.cold_siblings([0, 1, 2, 3])
+        == {
+            0: {4},
+            1: {4},
+        }
+    )
     assert sorted(graph.clause_texts()) == sorted((c.clause_id, c.text) for c in CLAUSES)
 
 
