@@ -14,13 +14,14 @@ export HYDRADB_ADMIN_URL=http://127.0.0.1:9090
 
 # Answer on the public port right away: Render's free tier gives HydraDB 0.1 CPU, so it needs several
 # minutes to open the store, and Render fails the deploy when nothing listens on $PORT in that time.
-# Until the app takes over, every request gets a 503 that says the instance is warming up.
+# Until the app takes over, /health answers 200 with ready:false (Render's health check needs a 2xx
+# to promote the deploy) and every other path gets a 503 that says the instance is warming up.
 "${drop[@]}" python -c '
 import http.server, json, os
 body = json.dumps({"ok": False, "ready": False, "status": "warming"}).encode()
 class H(http.server.BaseHTTPRequestHandler):
     def _r(self):
-        self.send_response(503)
+        self.send_response(200 if self.path == "/health" else 503)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Retry-After", "30")
